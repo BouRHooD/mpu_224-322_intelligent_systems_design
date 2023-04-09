@@ -1,0 +1,21 @@
+########################################################################################################################
+# Урок 1: https://www.youtube.com/watch?v=52g2Qi_4X3E
+# Урок 2: https://www.youtube.com/watch?v=IxFyw4qFytA&t
+# Урок 3: https://youtu.be/ond8h5NqtGQ?t=760 
+'''
+Задача коммивояжёра, !упорядочное скрещивание для маршрутов в графе!, !мутация обменов для упорядоченных списков!
+Элитизм - отбираем небольшое число наиболее приспособленных особей
+'''
+# Урок 4: https://www.youtube.com/watch?v=z9dCWHWcF8c
+########################################################################################################################
+'''
+Одна хромосома описывает все возможные маршруты, список в хромосоме определяет кратчайший маршрут из вершины
+'''
+########################################################################################################################
+1) https://russianblogs.com/article/4613878659/ - Отображение графики, нарисованной matplotlib, в графическом интерфейсе, разработанном PyQt5
+2) https://translated.turbopages.org/proxy_u/en-ru.ru.450df549-643195c1-d55d5bac-74722d776562/https/www.geeksforgeeks.org/building-an-undirected-graph-and-finding-shortest-path-using-dictionaries-in-python/ - Building an undirected graph and finding shortest path using Dictionaries in Python
+3) https://russianblogs.com/article/6668589217/ - Библиотека комплексного сетевого анализа Python networkx
+4) https://networkx.org/documentation/stable/tutorial.html - This guide can help you start working with NetworkX
+5) https://www.programmersought.com/article/43653940844/ - Embed networkx in pyqt5
+6) https://question-it.com/questions/6569528/obnovit-grafik-networkx-vstroennyj-v-pyqt5-matplotlib - Обновить график Networkx, встроенный в PyQt5 Matplotlib
+7) https://github.com/alessandrojcm/shortest-path-graphicator - Shortest path plotter
