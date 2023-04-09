@@ -49,7 +49,7 @@ class Widget_Draw_Graph(FigureCanvas):
     edgelist_colored = None
     node_list, edge_list, weight_list = None, None, None
 
-    def __init__(self, parent=None, in_width=1000, in_height=1000, in_dpi=100, TypeGraph='Рандомный граф'):
+    def __init__(self, parent=None, in_width=1000, in_height=1000, in_dpi=100, TypeGraph='Рандомный граф', TopologyGraph='circular_layout'):
         # Создайте рисунок. Примечание. Этот рисунок является рисунком под matplotlib, а не рисунком под matplotlib.pyplot
         # Вызовите метод add_subplot для рисунка, аналогично методу subplot в matplotlib.pyplot
         self.local_width = in_width; self.local_height = in_height; self.local_dpi = in_dpi; 
@@ -139,7 +139,7 @@ class Widget_Draw_Graph(FigureCanvas):
         G_OLD = Widget_Draw_Graph.G
         pos_local = Widget_Draw_Graph.pos
         edge_weight = Widget_Draw_Graph.edge_weight
-        nx.draw_networkx_edge_labels(G_OLD, ax = self.axes, pos = pos_local, edge_labels = edge_weight)
+        nx.draw_networkx_edge_labels(G_OLD, ax = self.axes, pos = pos_local, edge_labels = edge_weight, font_size=8)
         self.draw()
 
     def draw_best_graph(self, best_ways, startV, endV):
@@ -167,14 +167,13 @@ class Widget_Draw_Graph(FigureCanvas):
             prev = next
 
         nx.draw_networkx_edges(G_OLD, pos = pos_local, ax = self.axes, edgelist=edgelist_colored, width=8, alpha=1, edge_color=EDGE_ACTIVE_COLOR)
-        nx.draw_networkx_edge_labels(G_OLD, ax = self.axes, pos = pos_local, edge_labels = edge_weight)
+        nx.draw_networkx_edge_labels(G_OLD, ax = self.axes, pos = pos_local, edge_labels = edge_weight, font_size=8)
 
         Widget_Draw_Graph.edgelist_colored = edgelist_colored.copy()
 
         self.draw()
 
-
-    def draw_graph(self, startV=0, endV=-1, node_count=-1, is_redraw=True, is_need_new_weight=True, TypeGraph='Рандомный граф', AdjacencyMatrixTodense=None):
+    def draw_graph(self, startV=0, endV=-1, node_count=-1, is_redraw=True, is_need_new_weight=True, TypeGraph='Рандомный граф', AdjacencyMatrixTodense=None, inTopologyGraph='circular_layout'):
         if node_count == -1: node_count = 5; 
 
         node_list, edge_list, weight_list = Widget_Draw_Graph.node_list, Widget_Draw_Graph.edge_list, Widget_Draw_Graph.weight_list
@@ -189,6 +188,17 @@ class Widget_Draw_Graph(FigureCanvas):
         [G.add_edge(edge[0], edge[1], weight=weight) for edge, weight in zip(edge_list, weight_list)]
 
         pos_local = nx.circular_layout(G)
+        if inTopologyGraph == 'circular_layout':
+            pos_local = nx.circular_layout(G)
+        elif inTopologyGraph == 'random_layout':
+            pos_local = nx.random_layout(G)
+        elif inTopologyGraph == 'shell_layout':
+            pos_local = nx.shell_layout(G)
+        elif inTopologyGraph == 'spiral_layout':
+            pos_local = nx.spiral_layout(G)
+        elif inTopologyGraph == 'kamada_kawai_layout':
+            pos_local = nx.kamada_kawai_layout(G)
+
         edge_weight = nx.get_edge_attributes(G,'weight')
         edge_numbers = G.number_of_edges()
         node_numbers = G.number_of_nodes()
@@ -201,7 +211,7 @@ class Widget_Draw_Graph(FigureCanvas):
         node_colors[endV]   = Widget_Draw_Graph.NODE_COLOR_END
 
         nx.draw(G, ax = self.axes, with_labels = True, edge_color=edge_colors, pos = pos_local, node_color=node_colors, node_size = 1000, width = 3)
-        nx.draw_networkx_edge_labels(G, ax = self.axes, pos = pos_local, edge_labels = edge_weight)
+        nx.draw_networkx_edge_labels(G, ax = self.axes, pos = pos_local, edge_labels = edge_weight, font_size=8)
         
         # pip install scipy
         # Формируем матрицу смежности для ген. алгоритма
@@ -239,6 +249,11 @@ class Window(QMainWindow):
         self.ui.TypeGraph_ComboBox.addItems(list_items)
         TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
 
+        # Выбор топологии
+        list_items_topology = ["circular_layout", "random_layout", 'shell_layout', 'spiral_layout', 'kamada_kawai_layout']
+        self.ui.TopologyGraph_ComboBox.addItems(list_items_topology)
+        TopologyGraph = self.ui.TopologyGraph_ComboBox.currentText()
+
         # Настройки рандома
         if self.ui.UseRandomSettings_CheckBox.isChecked():
             RANDOM_SEED = 42         # Зерно для того, чтобы рандом всегда был одним и тем же
@@ -249,7 +264,7 @@ class Window(QMainWindow):
 
         # Инициализация виджета для вывода графиков
         layout = QVBoxLayout()
-        self.canvas = Widget_Draw_Graph(self, TypeGraph=TypeGraph)
+        self.canvas = Widget_Draw_Graph(self, TypeGraph=TypeGraph, TopologyGraph=TopologyGraph)
         self.toolbar = NavigationToolbar(self.canvas, self)
         layout.addWidget(self.toolbar, Qt.AlignCenter)
         layout.addWidget(self.canvas, Qt.AlignCenter)
@@ -261,10 +276,12 @@ class Window(QMainWindow):
         self.ui.NODE_END_INDEX_IntSpinBox.valueChanged.connect(self.NODE_START_INDEX_IntSpinBox_Changed)    # Изменение конечной вершины
         self.ui.NODE_COUNT_IntSpinBox.valueChanged.connect(self.NODE_COUNT_IntSpinBox_Changed)              # Изменение кол-ва вершин
         self.ui.UseRandomSettings_CheckBox.stateChanged.connect(self.UseRandomSettings_CheckBox_Changed)    # Изменения параметра использовать настройки рандома
+        
+        self.ui.TopologyGraph_ComboBox.currentTextChanged.connect(self.UseRandomSettings_CheckBox_currentTextChanged) 
 
         self.ui.bUseGenRandomGraph.clicked.connect(self.NODE_COUNT_IntSpinBox_Changed)
 
-        self.ui.bDropWayGraph.clicked.connect(self.NODE_START_INDEX_IntSpinBox_Changed)    
+        self.ui.bDropWayGraph.clicked.connect(self.NODE_START_INDEX_IntSpinBox_Changed)  
 
         # Выводим данные весов в таблицу приложения
         self.SendDataWeightToDataGrid_AdjacencyMatrixTodense()
@@ -287,14 +304,16 @@ class Window(QMainWindow):
         get_value_startV    = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
         get_value_endV      = self.ui.NODE_END_INDEX_IntSpinBox.value() - 1
         get_value_NodeCount = self.ui.NODE_COUNT_IntSpinBox.value()
+        TopologyGraph = self.ui.TopologyGraph_ComboBox.currentText()
         self.canvas.clear_graph()
-        self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph, is_need_new_weight=False)
+        self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph, is_need_new_weight=False, inTopologyGraph=TopologyGraph)
 
     def NODE_COUNT_IntSpinBox_Changed(self):
         get_value_TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
         get_value_NodeCount = self.ui.NODE_COUNT_IntSpinBox.value()
         get_value_startV    = self.ui.NODE_START_INDEX_IntSpinBox.value()
         get_value_endV      = self.ui.NODE_END_INDEX_IntSpinBox.value()
+        TopologyGraph = self.ui.TopologyGraph_ComboBox.currentText()
 
         if get_value_NodeCount <= get_value_endV:   self.ui.NODE_END_INDEX_IntSpinBox.setValue(get_value_NodeCount); 
         if get_value_startV == get_value_endV:      self.ui.NODE_END_INDEX_IntSpinBox.setValue(get_value_NodeCount); 
@@ -307,10 +326,18 @@ class Window(QMainWindow):
 
         # Рисуем на графике
         self.canvas.clear_graph()
-        self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph)
+        self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph, inTopologyGraph=TopologyGraph)
 
         # Выводим данные весов в таблицу приложения после отрисовки графика так как обновится AdjacencyMatrixTodense
         self.SendDataWeightToDataGrid_AdjacencyMatrixTodense()
+
+    def UseRandomSettings_CheckBox_currentTextChanged(self, value):
+        get_value_TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
+        get_value_startV    = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
+        get_value_endV      = self.ui.NODE_END_INDEX_IntSpinBox.value() - 1
+        get_value_NodeCount = self.ui.NODE_COUNT_IntSpinBox.value()
+        self.canvas.clear_graph()
+        self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph, is_need_new_weight=False, inTopologyGraph=value)
 
     def UseRandomSettings_CheckBox_Changed(self):
         get_value_IsUseRandomSettings = self.ui.UseRandomSettings_CheckBox.isChecked()
@@ -348,9 +375,9 @@ class Window(QMainWindow):
         self.canvas.update_weight_on_graph()
 
         # Изменяем в таблице приложения
-        is_changed_value_on_check_change = True
+        Window.is_changed_value_on_check_change = True
         self.ui.tableWidget_Weight.setItem(col, row, QTableWidgetItem(cell_text))
-        is_changed_value_on_check_change = False
+        Window.is_changed_value_on_check_change = False
 
     def SendDataWeightToDataGrid_AdjacencyMatrixTodense(self):
         AdjacencyMatrixTodense = Widget_Draw_Graph.AdjacencyMatrixTodense
@@ -377,6 +404,8 @@ class Window(QMainWindow):
         self.canvas.drop_best_graph()
 
     def UseGenAlg_Clicked(self):
+        self.NODE_START_INDEX_IntSpinBox_Changed()
+
         '''
         # Константы задачи
         inf = 100
