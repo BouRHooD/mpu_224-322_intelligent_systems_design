@@ -288,7 +288,7 @@ class Window(QMainWindow):
         
         self.ui.tableWidget_Weight.cellChanged.connect(self.check_change)
         
-        self.ui.SystemMassage_Label.setText('Статус: приложение готово к работе')
+        self.ui.SystemMassage_TextBrowser.setText('Статус: приложение готово к работе')
     
     def formOpening(self):
         # Настройки окна главной формы
@@ -419,7 +419,8 @@ class Window(QMainWindow):
         ''' Кратчайший путь равен 20 '''
 
         D = Widget_Draw_Graph.AdjacencyMatrixTodense
-        print(D)
+        print(f'Матрица смежности{D}')
+        self.ui.SystemMassage_TextBrowser.setText(f'Матрица смежности{D}')
         
         startV = 0                          # Стартовая вершина
         LENGTH_D = len(D)                   # Длина таблицы маршрутов (кол-во вершин)
@@ -692,10 +693,12 @@ class Window(QMainWindow):
             minFitnessValues.append(minFitness)
             avgFitnessValues.append(avgFitness)
             print(f"Поколение {generationCounter}: Мин. приспособ. = {minFitness}, Средняя присособ. = {avgFitness}")
+            self.ui.SystemMassage_TextBrowser.append(f"Поколение {generationCounter}: Мин. приспособ. = {minFitness}, Средняя присособ. = {avgFitness}")
 
             best_index = fitnessValues.index(minFitness)
             best = population[best_index]
             print("Лучший индивидуум = ", *best, "\n")
+            self.ui.SystemMassage_TextBrowser.append(f"Лучший индивидуум = {best}\n")
 
 
         # * Выводим собранную статистику в виде графиков
