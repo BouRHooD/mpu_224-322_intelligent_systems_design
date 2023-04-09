@@ -11,6 +11,7 @@
 import os
 import sys                                                            # Предоставляет системе особые параметры и функции
 import math
+import time
 import random                                                         # Для генерации рандомных значений
 import numpy as np                                                    # Для работы с массивами
 import networkx as nx                                                 # Для рисования графов маршрутов (можно использовать с нейроными сетями) (pip install networkx)
@@ -40,6 +41,13 @@ class Widget_Draw_Graph(FigureCanvas):
     NODE_COLOR_START  = '#90EE90'
     NODE_COLOR_END    = '#F08080'
     AdjacencyMatrixTodense = None
+    G = None
+    pos = None
+    edge_weight = None
+    node_colors = None
+    edge_colors = None
+    edgelist_colored = None
+    node_list, edge_list, weight_list = None, None, None
 
     def __init__(self, parent=None, in_width=1000, in_height=1000, in_dpi=100, TypeGraph='Рандомный граф'):
         # Создайте рисунок. Примечание. Этот рисунок является рисунком под matplotlib, а не рисунком под matplotlib.pyplot
@@ -48,6 +56,11 @@ class Widget_Draw_Graph(FigureCanvas):
 
         self.figure = Figure(figsize=(self.local_width, self.local_height), dpi = self.local_dpi) 
         self.axes = self.figure.add_subplot(111) 
+
+        # Генерируем верширны, границы и веса к ним
+        Widget_Draw_Graph.node_list, Widget_Draw_Graph.edge_list, Widget_Draw_Graph.weight_list = self.generate_edges_list(TypeGraph)
+
+        # Отрисовываем вершины, границы и веса к ним 
         self.draw_graph(is_redraw=False, TypeGraph=TypeGraph)
 
         # Инициализировать родительский класс
@@ -57,55 +70,123 @@ class Widget_Draw_Graph(FigureCanvas):
         FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
 
+    def generate_edges_list(self, TypeGraph, startV=0, endV=-1, node_count=-1):
+        # Выставляем стандартные значения при загрузки приложения - вершин 5, начальная точка 0, конечная точка 1
+        if node_count == -1: node_count = 5; 
+        if startV >= node_count: startV = node_count - 1; 
+        if endV == -1 or endV >= node_count: endV = node_count - 1; 
+
+        # Добавить ребра по списку
+        node_list = []
+        [node_list.append(i + 1) for i in range(node_count)]
+
+        # Генерируем список вершин
+        edge_list = []
+        weight_list = []
+        for i in range(node_count):
+            for j in range(i):
+                local_weight = random.randint(1, 10)
+                # Полносвязный граф
+                if TypeGraph == 'Полносвязный граф':
+                    edge_list.append((i+1, j+1))
+                    weight_list.append(local_weight)
+                # Рандомный граф
+                elif TypeGraph == 'Рандомный граф':
+                    if random.random() > 0.5:
+                        edge_list.append((i+1, j+1))
+                        weight_list.append(local_weight)
+                # Неполносвязный граф
+                elif TypeGraph == 'Неполносвязный граф':
+                    if (abs(i-j) not in (1,node_count-1)):
+                        edge_list.append((i+1, j+1))
+                        weight_list.append(local_weight)
+                
+        # Проверяем, чтобы у вершины было хоть 1 соединение, если нет, то рандомно добавляем его
+        edge_to_list = []
+        edge_from_list = []
+        for edge in edge_list:
+            edge_to_list.append(edge[1])
+            edge_from_list.append(edge[0])
+
+        for i in range(node_count):
+            node_number = i + 1
+
+            # Проверяем, чтобы Start и End были соединены
+            if i == startV:
+                if node_number not in edge_to_list and node_number not in edge_from_list:
+                    j = endV
+                    local_weight = random.randint(1, 10)
+                    edge_list.append((i+1, j+1))
+                    weight_list.append(local_weight)
+
+            # Проверяем, чтобы у каждой вершины было хоть 1 соединение
+            if node_number not in edge_to_list and node_number not in edge_from_list:
+                j = i
+                while i == j:
+                    j = random.randint(0, node_count)
+                local_weight = random.randint(1, 10)
+                edge_list.append((i+1, j+1))
+                weight_list.append(local_weight)
+
+        return node_list, edge_list, weight_list
     
     def clear_graph(self):
         for ax in self.figure.axes:
             ax.clear()
         self.draw()
 
-    def draw_graph(self, startV=0, endV=-1, node_count=-1, is_redraw=True, TypeGraph='Рандомный граф', AdjacencyMatrixTodense=None):
+    def update_weight_on_graph(self):
+        G_OLD = Widget_Draw_Graph.G
+        pos_local = Widget_Draw_Graph.pos
+        edge_weight = Widget_Draw_Graph.edge_weight
+        nx.draw_networkx_edge_labels(G_OLD, ax = self.axes, pos = pos_local, edge_labels = edge_weight)
+        self.draw()
+
+    def draw_best_graph(self, best_ways, startV, endV):
+        G_OLD = Widget_Draw_Graph.G
+        pos_local = Widget_Draw_Graph.pos
+        edge_weight = Widget_Draw_Graph.edge_weight
+        edge_numbers = G_OLD.number_of_edges()
+        edge_list = Widget_Draw_Graph.edge_list
+        EDGE_ACTIVE_COLOR = Widget_Draw_Graph.EDGE_ACTIVE_COLOR
+
+        # Перебираем все полученные маршруты и пририсовываем маршруты графику
+        prev = startV
+        edgelist_colored = []
+        best_way = best_ways[endV]
+        full_way = best_way[:best_way.index(endV)+1]
+        for next in full_way:
+            if next > edge_numbers: continue; 
+
+            for added_edge in edge_list:
+                if prev+1 == next+1: continue; 
+                if prev+1 in added_edge and next+1 in added_edge:
+                    edgelist_colored.append(added_edge)
+                    break
+
+            prev = next
+
+        nx.draw_networkx_edges(G_OLD, pos = pos_local, ax = self.axes, edgelist=edgelist_colored, width=8, alpha=1, edge_color=EDGE_ACTIVE_COLOR)
+        nx.draw_networkx_edge_labels(G_OLD, ax = self.axes, pos = pos_local, edge_labels = edge_weight)
+
+        Widget_Draw_Graph.edgelist_colored = edgelist_colored.copy()
+
+        self.draw()
+
+
+    def draw_graph(self, startV=0, endV=-1, node_count=-1, is_redraw=True, is_need_new_weight=True, TypeGraph='Рандомный граф', AdjacencyMatrixTodense=None):
         if node_count == -1: node_count = 5; 
 
+        node_list, edge_list, weight_list = Widget_Draw_Graph.node_list, Widget_Draw_Graph.edge_list, Widget_Draw_Graph.weight_list
+
+        # Создаем график для связи всех параметров
         G=nx.Graph()
-        # Добавить ребра по списку
-        [G.add_node(i + 1) for i in range(node_count)]
 
-        # Генерируем список вершин
-        for i in range(node_count):
-            for j in range(i):
-                # Полносвязный граф
-                if TypeGraph == 'Полносвязный граф':
-                    G.add_edge(i+1, j+1, weight = abs(i-j))
-                # Рандомный граф
-                elif TypeGraph == 'Рандомный граф':
-                    if random.random() > 0.5:
-                        G.add_edge(i+1, j+1, weight = abs(i-j))
-                # Неполносвязный граф
-                elif TypeGraph == 'Неполносвязный граф':
-                    if (abs(i-j) not in (1,node_count-1)):
-                        G.add_edge(i+1, j+1, weight = abs(i-j))
-                
+        # Добавляем веришны (ноды) (кружочки) по списку
+        [G.add_node(node) for node in node_list]
 
-        # Проверяем, чтобы у вершины было хоть 1 соединение, если нет, то рандомно добавляем его
-        list_edges_Matrix = nx.adjacency_matrix(G)
-        for i in range(node_count):
-            # Проверяем, чтобы Start и And были соединены
-            if i == startV:
-                if i not in list_edges_Matrix.indices:
-                    j = endV
-                    G.add_edge(i+1, j+1, weight = abs(i-j))
-
-            # Проверяем, чтобы у каждой вершины было хоть 1 соединение
-            if i not in list_edges_Matrix.indices:
-                j = i
-                while i == j:
-                    j = random.randint(0, node_count)
-                G.add_edge(i+1, j+1, weight = abs(i-j))
-
-        #N = nx.adjacency_matrix(G)
-        #A = N.todense()
-        #print(N)
-        #print(A)  
+        # Добавить ребра (соединения вершин) по списку
+        [G.add_edge(edge[0], edge[1], weight=weight) for edge, weight in zip(edge_list, weight_list)]
 
         pos_local = nx.circular_layout(G)
         edge_weight = nx.get_edge_attributes(G,'weight')
@@ -120,12 +201,26 @@ class Widget_Draw_Graph(FigureCanvas):
         node_colors[endV]   = Widget_Draw_Graph.NODE_COLOR_END
 
         nx.draw(G, ax = self.axes, with_labels = True, edge_color=edge_colors, pos = pos_local, node_color=node_colors, node_size = 1000, width = 3)
-        nx.draw_networkx_edge_labels(G, pos_local, edge_labels = edge_weight)
+        nx.draw_networkx_edge_labels(G, ax = self.axes, pos = pos_local, edge_labels = edge_weight)
         
         # pip install scipy
+        # Формируем матрицу смежности для ген. алгоритма
         N = nx.adjacency_matrix(G)
         A = N.todense()
-        Widget_Draw_Graph.AdjacencyMatrixTodense = A[:]
+        list_edges = A.tolist()
+        for i in range(len(list_edges)):
+            for j in range(len(list_edges[0])):
+                value = list_edges[i][j]
+                if value == 0:
+                    if i == j: list_edges[i][j] = 0; # 0, так как значение входит само в себя
+                    else: list_edges[i][j] = 100;    # Большое число, чтобы там где нет дорог, не обучались
+
+        Widget_Draw_Graph.AdjacencyMatrixTodense = list_edges
+        Widget_Draw_Graph.G = G.copy()
+        Widget_Draw_Graph.pos = pos_local.copy()
+        Widget_Draw_Graph.edge_weight = edge_weight.copy()
+        Widget_Draw_Graph.edge_colors = edge_colors.copy()
+        Widget_Draw_Graph.node_colors = node_colors.copy()
         #print(N)
         #print(A)    
         # Экспортировать созданную выше матрицу A весов соединений в файл csv
@@ -138,10 +233,10 @@ class Window(QMainWindow):
         super(Window, self).__init__(*args, **kwargs)
 
         self.formOpening()                                            # Настройки и запуск формы
-
-        list_items = ["Рандомный граф", "Полносвязный граф"]
+        
+        # Выбор типа сети
+        list_items = ["Полносвязный граф", "Неполносвязный граф", "Рандомный граф"]
         self.ui.TypeGraph_ComboBox.addItems(list_items)
-
         TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
 
         # Настройки рандома
@@ -150,7 +245,7 @@ class Window(QMainWindow):
             RANDOM_SEED = self.ui.UseRandomSettings_IntSpinBox.value()
             random.seed(RANDOM_SEED) # Присваиваем зерно для рандома
         else:
-            random.seed(0)
+            random.seed(int(1000 * time.time()) % 2**32)
 
         # Инициализация виджета для вывода графиков
         layout = QVBoxLayout()
@@ -167,16 +262,24 @@ class Window(QMainWindow):
         self.ui.NODE_COUNT_IntSpinBox.valueChanged.connect(self.NODE_COUNT_IntSpinBox_Changed)              # Изменение кол-ва вершин
         self.ui.UseRandomSettings_CheckBox.stateChanged.connect(self.UseRandomSettings_CheckBox_Changed)    # Изменения параметра использовать настройки рандома
 
-        self.ui.bUseGenRandomGraph.clicked.connect(self.bUseGenRandomGraph_Clicked)
+        self.ui.bUseGenRandomGraph.clicked.connect(self.NODE_COUNT_IntSpinBox_Changed)
 
-        self.ui.SystemMassage_Label.setText('Статус: приложение готово к работе')
+        self.ui.bDropWayGraph.clicked.connect(self.NODE_START_INDEX_IntSpinBox_Changed)    
+
+        # Выводим данные весов в таблицу приложения
+        self.SendDataWeightToDataGrid_AdjacencyMatrixTodense()
         
+        self.ui.tableWidget_Weight.cellChanged.connect(self.check_change)
+        
+        self.ui.SystemMassage_Label.setText('Статус: приложение готово к работе')
+    
     def formOpening(self):
         # Настройки окна главной формы
         file_ui_path = 'GUI.ui' if os.path.isfile('GUI.ui') is True else 'L1/GUI.ui'
+        file_icon_path = 'surflay.ico' if os.path.isfile('surflay.ico') is True else 'L1/surflay.ico'
         self.ui = uic.loadUi(file_ui_path)                            # GUI, должен быть в папке с main.py
         self.ui.setWindowTitle('Леонов Владислав 224-322 - Лаб. 1')   # Название главного окна
-        self.ui.setWindowIcon(QIcon('surflay.ico'))                   # Иконка на гланое окно
+        self.ui.setWindowIcon(QIcon(file_icon_path))                  # Иконка на гланое окно
         self.ui.show()                                                # Открываем окно формы  
 
     def NODE_START_INDEX_IntSpinBox_Changed(self):
@@ -185,7 +288,7 @@ class Window(QMainWindow):
         get_value_endV      = self.ui.NODE_END_INDEX_IntSpinBox.value() - 1
         get_value_NodeCount = self.ui.NODE_COUNT_IntSpinBox.value()
         self.canvas.clear_graph()
-        self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph)
+        self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph, is_need_new_weight=False)
 
     def NODE_COUNT_IntSpinBox_Changed(self):
         get_value_TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
@@ -200,8 +303,14 @@ class Window(QMainWindow):
         get_value_startV -= 1; 
         get_value_endV -= 1; 
 
+        Widget_Draw_Graph.node_list, Widget_Draw_Graph.edge_list, Widget_Draw_Graph.weight_list =  self.canvas.generate_edges_list(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph)
+
+        # Рисуем на графике
         self.canvas.clear_graph()
         self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph)
+
+        # Выводим данные весов в таблицу приложения после отрисовки графика так как обновится AdjacencyMatrixTodense
+        self.SendDataWeightToDataGrid_AdjacencyMatrixTodense()
 
     def UseRandomSettings_CheckBox_Changed(self):
         get_value_IsUseRandomSettings = self.ui.UseRandomSettings_CheckBox.isChecked()
@@ -212,8 +321,55 @@ class Window(QMainWindow):
             self.ui.UseRandomSettings_Label.setEnabled(False)
             self.ui.UseRandomSettings_IntSpinBox.setEnabled(False)
 
+    def check_change(self):
+        # Получаем параметры
+        current_item = self.ui.tableWidget_Weight.currentItem()
+        if current_item is None: return; 
+        row = current_item.row()
+        col = current_item.column()
+        cell_text = current_item.text()
+
+        # Изменяем в матрице для ген. алг.
+        Widget_Draw_Graph.AdjacencyMatrixTodense[row][col] = int(cell_text)
+        Widget_Draw_Graph.AdjacencyMatrixTodense[col][row] = int(cell_text)
+
+        # Изменяем в весах для перерисовки
+        edge = (col + 1, row + 1) if (col + 1, row + 1) in Widget_Draw_Graph.edge_list else (row + 1, col + 1)
+        index_edge = Widget_Draw_Graph.edge_list.index(edge)
+        Widget_Draw_Graph.weight_list[index_edge] = int(cell_text)
+
+        # Изменяем в весах для перерисовки
+        edge = (row + 1, col + 1) if (row + 1, col + 1) in Widget_Draw_Graph.edge_weight else (col + 1, row + 1)
+        Widget_Draw_Graph.edge_weight[edge] = int(cell_text)
+
+        self.canvas.update_weight_on_graph()
+
+        # Изменяем в таблице приложения
+        self.ui.tableWidget_Weight.setItem(col, row, QTableWidgetItem(cell_text))
+
+    def SendDataWeightToDataGrid_AdjacencyMatrixTodense(self):
+        AdjacencyMatrixTodense = Widget_Draw_Graph.AdjacencyMatrixTodense
+
+        count_row = len(AdjacencyMatrixTodense)
+        count_cell = len(AdjacencyMatrixTodense[0])
+
+        self.ui.tableWidget_Weight.clear()
+        self.ui.tableWidget_Weight.setRowCount(count_row)
+        self.ui.tableWidget_Weight.setColumnCount(count_cell)
+
+        for i in range(count_row):
+            for j in range(count_cell):
+                value = AdjacencyMatrixTodense[i][j]
+                self.ui.tableWidget_Weight.setItem(i, j, QTableWidgetItem(str(value)))
+
+        self.ui.tableWidget_Weight.resizeColumnsToContents()
+        self.ui.tableWidget_Weight.resizeRowsToContents()
+
     def bUseGenRandomGraph_Clicked(self):
         pass
+    
+    def bDropWayGraph_Clicked(self):
+        self.canvas.drop_best_graph()
 
     def UseGenAlg_Clicked(self):
         '''
@@ -229,12 +385,13 @@ class Window(QMainWindow):
         ''' Кратчайший путь равен 20 '''
 
         D = Widget_Draw_Graph.AdjacencyMatrixTodense
+        print(D)
         
         startV = 0                          # Стартовая вершина
         LENGTH_D = len(D)                   # Длина таблицы маршрутов (кол-во вершин)
         LENGTH_CHROM = len(D) * len(D[0])   # Длина хромосомы, полежащей оптимизации
         
-        startV = self.ui.NODE_START_INDEX_IntSpinBox.value()
+        startV = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
         #get_value_endV = self.ui.NODE_END_INDEX_IntSpinBox.value()
 
         # Константы генетического алгоритма
@@ -254,7 +411,7 @@ class Window(QMainWindow):
             RANDOM_SEED = self.ui.UseRandomSettings_IntSpinBox.value()
             random.seed(RANDOM_SEED) # Присваиваем зерно для рандома
         else:
-            random.seed(0)
+            random.seed(int(1000 * time.time()) % 2**32)
 
         class FitnessMin():
             '''
@@ -286,7 +443,8 @@ class Window(QMainWindow):
                 # Считаем длину текущего маршрута, используя значения смежной матрицы D
                 si = startV
                 for j in path:
-                    s += D[si][j]
+                    edge_values = D[si]
+                    s += int(edge_values[j])
                     si = j
             return s
 
@@ -510,10 +668,11 @@ class Window(QMainWindow):
         plt.plot(minFitnessValues, color='red')
         plt.plot(avgFitnessValues, color='green')
         plt.xlabel('Поколение')
-        plt.ylabel('Макс/средняя приспособленность')
+        plt.ylabel('Мин/средняя приспособленность')
         plt.title('Зависимость минимальной и средней приспособленности от поколения')
         plt.show()
-
+        
+        '''
         # * График кратчайшего маршрута
         vertex = ((0,1),(1,1), (0.5, 0.8), (0.1, 0.5), (0.8, 0.2), (0.4, 0))
 
@@ -546,47 +705,14 @@ class Window(QMainWindow):
         fig, ax = plt.subplots()
         show_graph(ax, best)
         plt.show()
+        '''
 
-        # Нарисуй картинку!
-        def _draw_graph(startV, index, tab):
-            fig, ax = plt.subplots()
-            G=nx.Graph()
-            # Добавить ребра по списку
-            G.add_node(1)
-            G.add_nodes_from([2,3,4,5])
-            for i in range(5):
-                for j in range(i):
-                    if (abs(i-j) not in (1,4)):
-                        G.add_edge(i+1, j+1, weight = abs(i-j))
-
-            pos_local = nx.circular_layout(G)
-            edge_weight = nx.get_edge_attributes(G,'weight')
-            edge_numbers = G.number_of_edges()
-            node_numbers = G.number_of_nodes()
-            edge_colors = ['#aaa' for i in range(edge_numbers)]
-            node_colors = ['b' for i in range(node_numbers)]
-
-            node_colors[startV] = 'g'
-            node_colors[node_numbers - 1] = 'r'
-
-            # Перебираем все полученные маршруты и пририсовываем маршруты графику
-            startV = 0
-            for i, v in enumerate(best):
-                if i == 0: continue; 
-                prev = startV
-                v = v[:v.index(i)+1]
-                # Перебираем маршрут
-                for j in v:
-                    if j >= edge_numbers: continue; 
-                    edge_colors[j] = 'r'
-                    prev = j
-            nx.draw(G, with_labels = True, edge_color=edge_colors, pos = pos_local, node_color=node_colors, node_size = 1000, width = 3)
-            nx.draw_networkx_edge_labels(G, pos_local, edge_labels = edge_weight)
-            #plt.savefig("star.jpg")
-            plt.show()
+        get_value_startV = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
+        get_value_endV = self.ui.NODE_END_INDEX_IntSpinBox.value() - 1
+        self.canvas.draw_best_graph(best, startV=get_value_startV, endV=get_value_endV)
 
         #_draw_graph(startV, 0, 0)
-
+        '''
         # * Интерактивный вывод статистики приспособленности
         import time
         plt.ion()
@@ -599,6 +725,7 @@ class Window(QMainWindow):
             time.sleep(0.4)
         plt.ioff()
         plt.show()
+        '''
 
 ''' --------Запуск формы------- '''
 if __name__ == '__main__':
