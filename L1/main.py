@@ -321,7 +321,10 @@ class Window(QMainWindow):
             self.ui.UseRandomSettings_Label.setEnabled(False)
             self.ui.UseRandomSettings_IntSpinBox.setEnabled(False)
 
+    is_changed_value_on_check_change = False
     def check_change(self):
+        if Window.is_changed_value_on_check_change: return; 
+    
         # Получаем параметры
         current_item = self.ui.tableWidget_Weight.currentItem()
         if current_item is None: return; 
@@ -345,7 +348,9 @@ class Window(QMainWindow):
         self.canvas.update_weight_on_graph()
 
         # Изменяем в таблице приложения
+        is_changed_value_on_check_change = True
         self.ui.tableWidget_Weight.setItem(col, row, QTableWidgetItem(cell_text))
+        is_changed_value_on_check_change = False
 
     def SendDataWeightToDataGrid_AdjacencyMatrixTodense(self):
         AdjacencyMatrixTodense = Widget_Draw_Graph.AdjacencyMatrixTodense
