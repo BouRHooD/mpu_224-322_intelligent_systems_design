@@ -31,6 +31,9 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
+# Внедряем многопоточность 
+from _other.simple_thread import SimpleThread
+
 ''' -------- Главная форма ------- '''
 # Унаследовав класс FigureCanvas, этот класс является не только PyQt5 Qwidget, 
 # Но и Matplotlib FigureCanvas, который является ключом для соединения pyqt5 и matplotlib.
@@ -374,6 +377,7 @@ class Window(QMainWindow):
         # Изменяем в матрице для ген. алг.
         Widget_Draw_Graph.AdjacencyMatrixTodense[row][col] = int(cell_text)
         Widget_Draw_Graph.AdjacencyMatrixTodense[col][row] = int(cell_text)
+        Window.D = Widget_Draw_Graph.AdjacencyMatrixTodense
 
         # Изменяем в весах для перерисовки
         edge = (col + 1, row + 1) if (col + 1, row + 1) in Widget_Draw_Graph.edge_list else (row + 1, col + 1)
@@ -409,12 +413,31 @@ class Window(QMainWindow):
         self.ui.tableWidget_Weight.resizeColumnsToContents()
         self.ui.tableWidget_Weight.resizeRowsToContents()
 
+    def Send_TableWidget_GenAlg(self, inList):
+        if inList is None: return; 
+    
+        count_row = len(inList)
+        count_cell = len(inList[0])
+
+        self.ui.tableWidget_GenAlg.clear()
+        self.ui.tableWidget_GenAlg.setRowCount(count_row)
+        self.ui.tableWidget_GenAlg.setColumnCount(count_cell)
+
+        for i in range(count_row):
+            for j in range(count_cell):
+                value = inList[i][j]
+                self.ui.tableWidget_GenAlg.setItem(i, j, QTableWidgetItem(str(value)))
+
+        self.ui.tableWidget_GenAlg.resizeColumnsToContents()
+        self.ui.tableWidget_GenAlg.resizeRowsToContents()
+
     def bUseGenRandomGraph_Clicked(self):
         pass
     
     def bDropWayGraph_Clicked(self):
         self.canvas.drop_best_graph()
 
+    D = None
     def UseGenAlg_Clicked(self):
         self.NODE_START_INDEX_IntSpinBox_Changed()
 
@@ -430,13 +453,13 @@ class Window(QMainWindow):
         '''
         ''' Кратчайший путь равен 20 '''
 
-        D = Widget_Draw_Graph.AdjacencyMatrixTodense
-        print(f'Матрица смежности{D}')
-        self.ui.SystemMassage_TextBrowser.setText(f'Матрица смежности{D}')
+        Window.D = Widget_Draw_Graph.AdjacencyMatrixTodense
+        print(f'Матрица смежности{Window.D}')
+        self.ui.SystemMassage_TextBrowser.setText(f'Матрица смежности{Window.D}')
         
-        startV = 0                          # Стартовая вершина
-        LENGTH_D = len(D)                   # Длина таблицы маршрутов (кол-во вершин)
-        LENGTH_CHROM = len(D) * len(D[0])   # Длина хромосомы, полежащей оптимизации
+        startV = 0                                        # Стартовая вершина
+        LENGTH_D = len(Window.D)                          # Длина таблицы маршрутов (кол-во вершин)
+        LENGTH_CHROM = len(Window.D) * len(Window.D[0])   # Длина хромосомы, полежащей оптимизации
         
         startV = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
         endV = self.ui.NODE_END_INDEX_IntSpinBox.value() - 1
@@ -490,7 +513,7 @@ class Window(QMainWindow):
                 # Считаем длину текущего маршрута, используя значения смежной матрицы D
                 si = startV
                 for j in path:
-                    edge_values = D[si]
+                    edge_values = Window.D[si]
                     s += int(edge_values[j])
                     si = j
             return s
@@ -668,6 +691,10 @@ class Window(QMainWindow):
         fitnessValues = [ind.fitness.values for ind in population]
         # До тех пор пока не найдем лучшее решенее или не пройдем все поколения
         while generationCounter < MAX_GENERATIONS:
+            
+            # Запоминаем параметры сети
+            # if self.ui.WorkType_RadioButton.isChecked() is True: pass; 
+
             generationCounter += 1
             # * Отбираем лучшие особи путем турнира
             offspring = selTournament(population, len(population))
@@ -719,7 +746,7 @@ class Window(QMainWindow):
                 best_way = best[endV]
                 full_way = best_way[:best_way.index(endV)+1]
                 for next in full_way:
-                    edge_values = D[prev]
+                    edge_values = Window.D[prev]
                     best_sum_way += int(edge_values[next])
                     prev = next
 
@@ -730,6 +757,8 @@ class Window(QMainWindow):
                 print("\n")
                 self.ui.SystemMassage_TextBrowser.append("\n") 
 
+        # * Выводим таблицу популяции
+        self.Send_TableWidget_GenAlg(population)
 
         # * Выводим собранную статистику в виде графиков
         plt.plot(minFitnessValues, color='red')
@@ -738,48 +767,13 @@ class Window(QMainWindow):
         plt.ylabel('Мин/средняя приспособленность')
         plt.title('Зависимость минимальной и средней приспособленности от поколения')
         plt.show()
-        
-        '''
-        # * График кратчайшего маршрута
-        vertex = ((0,1),(1,1), (0.5, 0.8), (0.1, 0.5), (0.8, 0.2), (0.4, 0))
-
-        vx = [v[0] for v in vertex]
-        vy = [v[1] for v in vertex]
-
-        def show_graph(ax, best):
-            # Прорисовываем все связи графа
-            ax.add_line(Line2D((vertex[0][0], vertex[1][0]), (vertex[0][1], vertex[1][1]), color='#aaa'))
-            ax.add_line(Line2D((vertex[0][0], vertex[2][0]), (vertex[0][1], vertex[2][1]), color='#aaa'))
-            ax.add_line(Line2D((vertex[0][0], vertex[3][0]), (vertex[0][1], vertex[3][1]), color='#aaa'))
-            ax.add_line(Line2D((vertex[1][0], vertex[2][0]), (vertex[1][1], vertex[2][1]), color='#aaa'))
-            ax.add_line(Line2D((vertex[2][0], vertex[5][0]), (vertex[2][1], vertex[5][1]), color='#aaa'))
-            ax.add_line(Line2D((vertex[2][0], vertex[4][0]), (vertex[2][1], vertex[4][1]), color='#aaa'))
-            ax.add_line(Line2D((vertex[3][0], vertex[5][0]), (vertex[3][1], vertex[5][1]), color='#aaa'))
-            ax.add_line(Line2D((vertex[4][0], vertex[5][0]), (vertex[4][1], vertex[5][1]), color='#aaa'))
-
-            # Перебираем все полученные маршруты и пририсовываем маршруты графику
-            startV = 0
-            for i, v in enumerate(best):
-                if i == 0: continue; 
-                prev = startV
-                v = v[:v.index(i)+1]
-                for j in v:
-                    ax.add_line(Line2D((vertex[prev][0], vertex[j][0]), (vertex[prev][1], vertex[j][1]), color='r'))
-                    prev = j
-                
-            ax.plot(vx, vy, ' ob', markersize=15)
-
-        fig, ax = plt.subplots()
-        show_graph(ax, best)
-        plt.show()
-        '''
 
         get_value_startV = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
         get_value_endV = self.ui.NODE_END_INDEX_IntSpinBox.value() - 1
         self.canvas.draw_best_graph(best, startV=get_value_startV, endV=get_value_endV)
 
         #_draw_graph(startV, 0, 0)
-        '''
+        
         # * Интерактивный вывод статистики приспособленности
         import time
         plt.ion()
@@ -792,7 +786,7 @@ class Window(QMainWindow):
             time.sleep(0.4)
         plt.ioff()
         plt.show()
-        '''
+        
 
 ''' --------Запуск формы------- '''
 if __name__ == '__main__':
