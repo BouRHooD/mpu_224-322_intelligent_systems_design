@@ -31,9 +31,6 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-# Внедряем многопоточность 
-from _other.simple_thread import SimpleThread
-
 ''' -------- Главная форма ------- '''
 # Унаследовав класс FigureCanvas, этот класс является не только PyQt5 Qwidget, 
 # Но и Matplotlib FigureCanvas, который является ключом для соединения pyqt5 и matplotlib.
@@ -274,7 +271,8 @@ class Window(QMainWindow):
         self.ui.RouteGraph_Widget.setLayout(layout)
 
         # Подписки на события
-        self.ui.bUseGenAlg.clicked.connect(self.UseGenAlg_Clicked)                                          # Использовать генетический алгоритм
+        self.ui.bUseGenAlg.clicked.connect(self.CreatePoolToUseGenAlg_Clicked)
+        #self.ui.bUseGenAlg.clicked.connect(self.UseGenAlg_Clicked)                                          # Использовать генетический алгоритм
         self.ui.NODE_START_INDEX_IntSpinBox.valueChanged.connect(self.NODE_START_INDEX_IntSpinBox_Changed)  # Изменение начальной вершины
         self.ui.NODE_END_INDEX_IntSpinBox.valueChanged.connect(self.NODE_START_INDEX_IntSpinBox_Changed)    # Изменение конечной вершины
         self.ui.NODE_COUNT_IntSpinBox.valueChanged.connect(self.NODE_COUNT_IntSpinBox_Changed)              # Изменение кол-ва вершин
@@ -287,6 +285,8 @@ class Window(QMainWindow):
         self.ui.bDropWayGraph.clicked.connect(self.NODE_START_INDEX_IntSpinBox_Changed)
 
         self.ui.WorkType_RadioButton.clicked.connect(self.check)
+
+        self.ui.NextGeneration_PushButton.clicked.connect(self.change_state)
 
         # Выводим данные весов в таблицу приложения
         self.SendDataWeightToDataGrid_AdjacencyMatrixTodense()
@@ -305,14 +305,19 @@ class Window(QMainWindow):
         self.ui.show()                                                # Открываем окно формы  
 
     # method called by radio button
+    IsStateChangedType = False
     def check(self):
         # checking if it is checked
         if self.ui.WorkType_RadioButton.isChecked():
             self.ui.NextGeneration_PushButton.setEnabled(True)
+            Window.IsStateChangedType = True
         # if it is not checked
         else:
             self.ui.NextGeneration_PushButton.setEnabled(False)
-             
+            Window.IsStateChangedType = False
+
+    def change_state(self):
+        if Window.pool_IsPauseTread: Window.pool_IsPauseTread = False;     
 
     def NODE_START_INDEX_IntSpinBox_Changed(self):
         get_value_TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
@@ -413,23 +418,23 @@ class Window(QMainWindow):
         self.ui.tableWidget_Weight.resizeColumnsToContents()
         self.ui.tableWidget_Weight.resizeRowsToContents()
 
-    def Send_TableWidget_GenAlg(self, inList):
+    def Send_TableWidget_GenAlg(self, widget, inList):
         if inList is None: return; 
     
         count_row = len(inList)
         count_cell = len(inList[0])
 
-        self.ui.tableWidget_GenAlg.clear()
-        self.ui.tableWidget_GenAlg.setRowCount(count_row)
-        self.ui.tableWidget_GenAlg.setColumnCount(count_cell)
+        widget.clear()
+        widget.setRowCount(count_row)
+        widget.setColumnCount(count_cell)
 
         for i in range(count_row):
             for j in range(count_cell):
                 value = inList[i][j]
-                self.ui.tableWidget_GenAlg.setItem(i, j, QTableWidgetItem(str(value)))
+                widget.setItem(i, j, QTableWidgetItem(str(value)))
 
-        self.ui.tableWidget_GenAlg.resizeColumnsToContents()
-        self.ui.tableWidget_GenAlg.resizeRowsToContents()
+        widget.resizeColumnsToContents()
+        widget.resizeRowsToContents()
 
     def bUseGenRandomGraph_Clicked(self):
         pass
@@ -437,8 +442,419 @@ class Window(QMainWindow):
     def bDropWayGraph_Clicked(self):
         self.canvas.drop_best_graph()
 
+    def SystemMassage_TextBrowser_append(self, text):
+        self.ui.SystemMassage_TextBrowser.append(text)
+
+    def population_value_signal_change_table(self, list):
+        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg, list)
+
+    def population_value_signal_stage_0_change_table(self, list):
+        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg_stage_0, list)
+
+    def population_value_signal_stage_1_change_table(self, list):
+        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg_stage_1, list)
+
+    def population_value_signal_stage_2_change_table(self, list):
+        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg_stage_2, list)
+
+    def population_value_signal_stage_3_change_table(self, list):
+        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg_stage_3, list)
+
+    def best_value_signal_change_graph(self, list):
+        # Сбрасываем на исходный график
+        self.NODE_START_INDEX_IntSpinBox_Changed()
+        # Рисуем новый путь
+        self.canvas.draw_best_graph(list, Window.pool_startV, Window.pool_endV)
+
+    class SenderMessage(QObject):
+        SystemMassage_TextBrowser_value_signal = pyqtSignal(str)
+        population_value_signal = pyqtSignal(list)
+        population_value_signal_stage_0 = pyqtSignal(list)
+        population_value_signal_stage_1 = pyqtSignal(list)
+        population_value_signal_stage_2 = pyqtSignal(list)
+        population_value_signal_stage_3 = pyqtSignal(list)
+        best_value_signal = pyqtSignal(list)
+        
+
+        def __init__(self):
+            super().__init__()
+
+        @pyqtSlot()
+        def test_run(self):
+            self.SystemMassage_TextBrowser_value_signal.emit("Привет!")
+            time.sleep(1)
+            self.SystemMassage_TextBrowser_value_signal.emit("Я PyQt5.")
+            time.sleep(1)
+            self.SystemMassage_TextBrowser_value_signal.emit("Мы сегодня тестируем...")
+            time.sleep(1)
+            self.SystemMassage_TextBrowser_value_signal.emit("Класс QThread.")
+            for i in range(0, 10, 1):
+                self.SystemMassage_TextBrowser_value_signal.emit(str(f'Шаг: {i}/10'))
+
+                # Пауза
+                while Window.pool_IsPauseTread: pass; 
+                Window.pool_IsPauseTread = True; 
+
+                time.sleep(0.1)
+            self.SystemMassage_TextBrowser_value_signal.emit("Тест завершён.")
+
+        @pyqtSlot()
+        def gen_alg_run(self):
+            Window.D = Widget_Draw_Graph.AdjacencyMatrixTodense
+            print(f'Матрица смежности{Window.D}')
+            self.SystemMassage_TextBrowser_value_signal.emit(f'Матрица смежности{Window.D}')
+            
+            startV = 0                                        # Стартовая вершина
+            LENGTH_D = len(Window.D)                          # Длина таблицы маршрутов (кол-во вершин)
+            LENGTH_CHROM = len(Window.D) * len(Window.D[0])   # Длина хромосомы, полежащей оптимизации
+            
+            startV = Window.pool_startV
+            endV = Window.pool_endV
+
+            # Константы генетического алгоритма
+            POPULATION_SIZE = 500    # Кол-во индивидуумов в популяции
+            P_CROSSOVER = 0.9        # Вероятность скрещивания
+            P_MUTATION = 0.1         # Вероятность мутации
+            MAX_GENERATIONS = 50     # Максимальное кол-во поколений
+
+            POPULATION_SIZE = Window.pool_POPULATION_SIZE
+            P_CROSSOVER     = Window.pool_P_CROSSOVER
+            P_MUTATION      = Window.pool_P_MUTATION
+            MAX_GENERATIONS = Window.pool_MAX_GENERATIONS
+
+            class FitnessMin():
+                '''
+                Значения приспособленности особи\n
+                '''
+                def __init__(self):
+                    self.values = 0
+
+            class Individual(list):
+                '''
+                Особь\n
+                Каждое решение – элемент популяции, называется особью
+                '''
+                def __init__(self, *args):
+                    super().__init__(*args)
+                    self.fitness = FitnessMin()
+
+            def oneDijkstraFitness(individual):
+                '''
+                Функция приспособленности (англ. fitness function)\n
+                Механизм оценки приспособленности каждой особи к текущим условиями окружающей среды\n
+                Алгоритм Дейкстры: https://python-scripts.com/dijkstras-algorithm
+                '''
+                s = 0
+                for n, path in enumerate(individual):
+                    # n - текущий номер узла до которого определяем маршрут
+                    index_path = path.index(n)
+                    path = path[:index_path+1]
+                    # Считаем длину текущего маршрута, используя значения смежной матрицы D
+                    si = startV
+                    for j in path:
+                        edge_values = Window.D[si]
+                        s += int(edge_values[j])
+                        si = j
+                return s
+
+            def individualCreator():
+                '''
+                Создаем особь\n
+                [[0,1,2...],[...],...,[...]]\n
+                Которая не повторяется в пределах списка
+                '''
+                random_values_list = []
+                while len(random_values_list) < LENGTH_D:
+                    random_values_path = []
+                    # Пока длина списка меньше N, выполняем цикл
+                    while len(random_values_path) < LENGTH_D:
+                        # Генерируем случайное целое число от 0 до Длины - 1
+                        number = random.randint(0, LENGTH_D - 1)
+                        # Проверяем, есть ли это число уже в списке
+                        if number not in random_values_path:
+                            # Если нет, добавляем в список
+                            random_values_path.append(number)
+                    # Проверяем, есть ли список уже в списке
+                    if random_values_path not in random_values_list:
+                        # Если нет, добавляем в список
+                        random_values_list.append(random_values_path)
+                return Individual(random_values_list)
+
+            def populationCreator(n=0):
+                '''Создаем популяцию из n особей'''
+                return list([individualCreator() for i in range(n)])
+
+            def clone(value):
+                # Создаем хромосому на основе списка (value[:] - делает копию списка)
+                ind = Individual(value[:])
+                ind.fitness.values = value.fitness.values
+                return ind
+
+            def selTournament(population, p_len):
+                '''Турнирный отбор'''
+                offspring = []
+                for n in range(p_len):
+                    # Получаем 3 рандомных НЕ одинаковых индекса
+                    i1 = i2 = i3 = 0
+                    while i1 == i2 or i1 == i3 or i2 == i3:
+                        i1, i2, i3 = random.randint(0, p_len - 1), random.randint(0, p_len - 1), random.randint(0, p_len - 1)
+                    p1, p2, p3 = population[i1], population[i2], population[i3]
+                    min_offspring = min([p1, p2, p3], key=lambda ind: ind.fitness.values)
+                    offspring.append(min_offspring)
+                return offspring
+
+            def cxOrdered(in_parent1, in_parent2):
+                '''Упорядоченное скрещивание'''
+                '''https://proproprogs.ru/ga/ga-obzor-metodov-otbora-skreshchivaniya-i-mutacii'''
+                copy_parent1, copy_parent2 = in_parent1[:], in_parent2[:]
+                for parent1, parent2 in zip(copy_parent1, copy_parent2):
+                    ind1, ind2 = parent1[:], parent2[:]
+
+                    # Выбираем случайный участок хромосомы одного из родителей
+                    # Генерируем случайное целое число от 0 до Длины - 1 и Проверяем, есть ли это число уже в списке
+                    random_values = []
+                    size = min(len(ind1), len(ind2))
+                    while len(random_values) < 2:
+                        number = random.randint(0, size - 1); 
+                        if number not in random_values: random_values.append(number); 
+                    a, b = min(random_values), max(random_values)
+
+                    # Копируем этот участок в потомков (двухточечное скрещивание)
+                    temp1, temp2 = ind1[:], ind2[:]
+                    ind1, ind2 = [100] * size, [100] * size
+                    ind1[a:b+1], ind2[a:b+1] = temp2[a:b+1], temp1[a:b+1]
+                    
+                    # Заполняем оставшиеся позиции потомков генами родителя в том же порядке
+                    index1, index2 = b+1, b+1
+                    for i in range(size): 
+                        # Переходим к началу хромосомы, если достигли конца
+                        if index1 >= size: index1 = 0
+                        if index2 >= size: index2 = 0
+
+                        # Проверяем, есть ли ген родителя в потомке
+                        # Если нет, то добавляем его в свободную позицию и Переходим к следующей позиции
+                        if temp1[i] not in ind1:
+                            ind1[index1] = temp1[i]
+                            index1 += 1
+                        
+                        # Проверяем, есть ли ген родителя в потомке
+                        # Если нет, то добавляем его в свободную позицию и Переходим к следующей позиции
+                        if temp2[i] not in ind2:
+                            ind2[index2] = temp2[i]
+                            index2 += 1
+                            
+                    in_parent1[copy_parent1.index(parent1)], in_parent2[copy_parent2.index(parent2)] = ind1, ind2
+
+            def cxOrdered_v2(in_parent1, in_parent2):
+                '''Упорядоченное скрещивание'''
+                '''На основе библиотеки https://deap.readthedocs.io/en/master/api/tools.html#deap.tools.cxOrdered'''
+                '''Goldberg 1989'''
+                copy_parent1, copy_parent2 = in_parent1[:], in_parent2[:]
+                for child1, child2 in zip(copy_parent1, copy_parent2):
+                    ind1, ind2 = child1[:], child2[:]
+
+                    # Выбираем случайный участок хромосом
+                    size = min(len(ind1), len(ind2))
+                    a, b = random.sample(range(size), 2)
+                    if a > b:
+                        a, b = b, a
+                    
+                    # Создаем дыры, участки, которые будут НЕизменяемыми если True
+                    # Причем дыры 1 потомка берутся из родителя 2 и наоборот
+                    holes1, holes2 = [True] * size, [True] * size
+                    for i in range(size):
+                        if i < a or i > b:
+                            holes1[ind2[i]] = False
+                            holes2[ind1[i]] = False
+
+                    # Заполняем 
+                    # Мы должны где-то сохранить исходные значения, прежде чем все перемешать
+                    temp1, temp2 = ind1, ind2
+                    k1, k2 = b + 1, b + 1
+                    for i in range(size):
+                        value_temp1 = temp1[(i + b + 1) % size]
+                        if not holes1[value_temp1]:
+                            ind1[k1 % size] = temp1[(i + b + 1) % size]
+                            k1 += 1
+
+                        if not holes2[temp2[(i + b + 1) % size]]:
+                            ind2[k2 % size] = temp2[(i + b + 1) % size]
+                            k2 += 1
+
+                    # Меняем местами содержимое между a и b
+                    for i in range(a, b + 1):
+                        new_val1, new_val2 = ind2[i], ind1[i]
+                        ind1[i], ind2[i] = new_val1, new_val2
+                        
+                    in_parent1[copy_parent1.index(child1)], in_parent2[copy_parent2.index(child2)] = ind1, ind2
+
+            def mutationShuffleIndexes(in_mutant, indpd=0.01):
+                '''
+                Мутация порядка генов в хромосоме\n
+                Мутация - это случайный обмен двух генов местами
+                '''
+                # Получаем длину хромосомы
+                copy_mutant = in_mutant[:]
+                for select_mutant in copy_mutant:
+                    new_mutant = select_mutant[:]
+                    length = len(new_mutant)
+                    # Для каждого гена в хромосоме
+                    for i in range(length):
+                        # Случайно выбираем, будет ли мутация
+                        if random.random() < indpd:
+                            j = i
+                            # Случайно выбираем другой ген для обмена местами
+                            while j == i:
+                                j = random.randint(0, length - 1)
+                            # Меняем местами гены i и j
+                            new_value_i, new_value_j = new_mutant[j], new_mutant[i]
+                            new_mutant[i], new_mutant[j] = new_value_i, new_value_j
+                            in_mutant[copy_mutant.index(select_mutant)] = new_mutant
+
+            # Обнуляем статистику
+            generationCounter = 0
+            minFitnessValues = []
+            avgFitnessValues = []
+            vals = []
+            best = None
+
+            # Создаем начальную популяцию
+            population = populationCreator(n=POPULATION_SIZE)
+
+            fitnessValues = list(map(oneDijkstraFitness, population))
+            for individual, fitnessValue in zip(population, fitnessValues):
+                individual.fitness.values = fitnessValue
+
+            fitnessValues = [ind.fitness.values for ind in population]
+            # До тех пор пока не найдем лучшее решенее или не пройдем все поколения
+            while generationCounter < MAX_GENERATIONS:
+                # f'Поколение {generationCounter}/{MAX_GENERATIONS}, шаг 0 - до турнирного отбора'
+                self.population_value_signal_stage_0.emit(population)
+
+                generationCounter += 1
+
+                # * Отбираем лучшие особи путем турнира
+                offspring = selTournament(population, len(population))
+                offspring = list(map(clone, offspring))
+                # f'Поколение {generationCounter}/{MAX_GENERATIONS}, шаг 1 - после турнирного отбора и до скрещивания'
+                self.population_value_signal_stage_1.emit(population)
+
+                # * Выполняем скрещивание неповторяющихся пар родителей 
+                offspring_even, offspring_odd = offspring[::2], offspring[1::2]
+                for child1, child2 in zip(offspring_even, offspring_odd):
+                    # Если меньше вероятности скрещивания, то скрещиваем
+                    # Если срабатывает условие, то родители становятся потомками, иначе они остаются родителями в популяции
+                    if random.random() < P_CROSSOVER/LENGTH_D:
+                        cxOrdered_v2(child1, child2)
+                # f'Поколение {generationCounter}/{MAX_GENERATIONS}, шаг 2 - после скрещивания и до мутации'
+                self.population_value_signal_stage_2.emit(population)
+
+                # * Выполняем мутацию
+                for mutant in offspring:
+                    if random.random() < P_MUTATION/LENGTH_D:
+                        mutationShuffleIndexes(mutant, 1.0/LENGTH_CHROM/10)
+
+                # * Обновляем значение приспособленности новой популяции
+                freshFitnessValues = list(map(oneDijkstraFitness, offspring))
+                for individual, fitnessValue in zip(offspring, freshFitnessValues):
+                    individual.fitness.values = fitnessValue
+
+                # * Обновляем список популяции
+                population[:] = offspring
+                # Итоговая популяция
+                self.population_value_signal.emit(population)
+                self.population_value_signal_stage_3.emit(population)
+
+                # * Обновляем список значений приспособленности каждой особи в популяции
+                fitnessValues = [ind.fitness.values for ind in population]
+
+                # * Формируем статистику
+                vals.append(fitnessValues)
+
+                minFitness = min(fitnessValues)
+                avgFitness = sum(fitnessValues) / len (fitnessValues)
+                minFitnessValues.append(minFitness)
+                avgFitnessValues.append(avgFitness)
+                print(f"Поколение {generationCounter}: Мин. приспособ. = {minFitness}, Средняя присособ. = {avgFitness}")
+                self.SystemMassage_TextBrowser_value_signal.emit(f"Поколение {generationCounter}: Мин. приспособ. = {minFitness}, Средняя присособ. = {avgFitness}")
+
+                best_index = fitnessValues.index(minFitness)
+                best = population[best_index]
+                print(f"Лучший индивидуум = {best}")
+                self.SystemMassage_TextBrowser_value_signal.emit(f"Лучший индивидуум = {best}")
+
+                try:
+                    # Считаем длину текущего маршрута, используя значения смежной матрицы D
+                    prev = startV
+                    best_sum_way = 0
+                    best_way = best[endV]
+                    full_way = best_way[:best_way.index(endV)+1]
+                    for next in full_way:
+                        edge_values = Window.D[prev]
+                        best_sum_way += int(edge_values[next])
+                        prev = next
+
+                    # Выводим информацию
+                    print(f"Лучший путь от {startV} до {endV} = {best_way} = {full_way}, приспособленность пути = {best_sum_way}\n")
+                    self.SystemMassage_TextBrowser_value_signal.emit(f"Лучший путь от {startV} до {endV} = {best_way} = {full_way}, приспособленность пути = {best_sum_way}\n")
+                except: 
+                    print("\n")
+                    self.SystemMassage_TextBrowser_value_signal.emit("\n") 
+
+                self.best_value_signal.emit(best)
+
+                # Пауза
+                while Window.pool_IsPauseTread: pass; 
+                Window.pool_IsPauseTread = True; 
+    
+    pool_IsPauseTread = True
+    pool_startV, pool_endV = None, None
+    pool_POPULATION_SIZE, pool_P_CROSSOVER, pool_P_MUTATION, pool_MAX_GENERATIONS = None, None, None, None
+    def CreatePoolToUseGenAlg_Clicked(self):
+        # https://ru.stackoverflow.com/questions/840239/Как-внедрить-многопоточность-в-pyqt
+        
+        # Запускаем поток для генетического алгоритма
+        self.thread = QThread(parent=self)
+        if Window.IsStateChangedType:
+            # Очищаем граф
+            self.NODE_START_INDEX_IntSpinBox_Changed()
+            self.ui.SystemMassage_TextBrowser.setText("")
+
+            Window.pool_startV = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
+            Window.pool_endV   = self.ui.NODE_END_INDEX_IntSpinBox.value() - 1
+
+            Window.pool_POPULATION_SIZE = self.ui.POPULATION_SIZE_IntSpinBox.value()
+            Window.pool_P_CROSSOVER     = self.ui.P_CROSSOVER_DoubleSpinBox.value()
+            Window.pool_P_MUTATION      = self.ui.P_MUTATION_DoubleSpinBox.value()
+            Window.pool_MAX_GENERATIONS = self.ui.MAX_GENERATIONS_IntSpinBox.value()
+
+            # Настройки рандома
+            if self.ui.UseRandomSettings_CheckBox.isChecked():
+                RANDOM_SEED = 42         # Зерно для того, чтобы рандом всегда был одним и тем же
+                RANDOM_SEED = self.ui.UseRandomSettings_IntSpinBox.value()
+                random.seed(RANDOM_SEED) # Присваиваем зерно для рандома
+            else:
+                random.seed(int(1000 * time.time()) % 2**32)
+
+            # Запускаем поток
+            self.sender_message = Window.SenderMessage()
+            self.sender_message.moveToThread(self.thread)
+            self.sender_message.SystemMassage_TextBrowser_value_signal.connect(self.SystemMassage_TextBrowser_append)
+            self.sender_message.population_value_signal.connect(self.population_value_signal_change_table)
+            self.sender_message.population_value_signal_stage_0.connect(self.population_value_signal_stage_0_change_table)
+            self.sender_message.population_value_signal_stage_1.connect(self.population_value_signal_stage_1_change_table)
+            self.sender_message.population_value_signal_stage_2.connect(self.population_value_signal_stage_2_change_table)
+            self.sender_message.population_value_signal_stage_3.connect(self.population_value_signal_stage_3_change_table)
+            self.sender_message.best_value_signal.connect(self.best_value_signal_change_graph)
+            self.thread.started.connect(self.sender_message.gen_alg_run)
+            self.thread.start()
+        else:
+            self.UseGenAlg_Clicked()
+
+
     D = None
     def UseGenAlg_Clicked(self):
+
         self.NODE_START_INDEX_IntSpinBox_Changed()
 
         '''
@@ -758,7 +1174,7 @@ class Window(QMainWindow):
                 self.ui.SystemMassage_TextBrowser.append("\n") 
 
         # * Выводим таблицу популяции
-        self.Send_TableWidget_GenAlg(population)
+        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg, population)
 
         # * Выводим собранную статистику в виде графиков
         plt.plot(minFitnessValues, color='red')
@@ -774,6 +1190,7 @@ class Window(QMainWindow):
 
         #_draw_graph(startV, 0, 0)
         
+        '''
         # * Интерактивный вывод статистики приспособленности
         import time
         plt.ion()
@@ -786,8 +1203,8 @@ class Window(QMainWindow):
             time.sleep(0.4)
         plt.ioff()
         plt.show()
+        '''
         
-
 ''' --------Запуск формы------- '''
 if __name__ == '__main__':
     app = QApplication(sys.argv)                                      # Объект приложения (экземпляр QApplication)
