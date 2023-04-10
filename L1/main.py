@@ -427,7 +427,7 @@ class Window(QMainWindow):
         LENGTH_CHROM = len(D) * len(D[0])   # Длина хромосомы, полежащей оптимизации
         
         startV = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
-        #get_value_endV = self.ui.NODE_END_INDEX_IntSpinBox.value()
+        endV = self.ui.NODE_END_INDEX_IntSpinBox.value() - 1
 
         # Константы генетического алгоритма
         POPULATION_SIZE = 500    # Кол-во индивидуумов в популяции
@@ -548,7 +548,7 @@ class Window(QMainWindow):
 
                 # Копируем этот участок в потомков (двухточечное скрещивание)
                 temp1, temp2 = ind1[:], ind2[:]
-                ind1, ind2 = [inf] * size, [inf] * size
+                ind1, ind2 = [100] * size, [100] * size
                 ind1[a:b+1], ind2[a:b+1] = temp2[a:b+1], temp1[a:b+1]
                 
                 # Заполняем оставшиеся позиции потомков генами родителя в том же порядке
@@ -697,8 +697,26 @@ class Window(QMainWindow):
 
             best_index = fitnessValues.index(minFitness)
             best = population[best_index]
-            print("Лучший индивидуум = ", *best, "\n")
-            self.ui.SystemMassage_TextBrowser.append(f"Лучший индивидуум = {best}\n")
+            print(f"Лучший индивидуум = {best}")
+            self.ui.SystemMassage_TextBrowser.append(f"Лучший индивидуум = {best}")
+
+            try:
+                # Считаем длину текущего маршрута, используя значения смежной матрицы D
+                prev = startV
+                best_sum_way = 0
+                best_way = best[endV]
+                full_way = best_way[:best_way.index(endV)+1]
+                for next in full_way:
+                    edge_values = D[prev]
+                    best_sum_way += int(edge_values[next])
+                    prev = next
+
+                # Выводим информацию
+                print(f"Лучший путь от {startV} до {endV} = {best_way} = {full_way}, приспособленность пути = {best_sum_way}\n")
+                self.ui.SystemMassage_TextBrowser.append(f"Лучший путь от {startV} до {endV} = {best_way} = {full_way}, приспособленность пути = {best_sum_way}\n")
+            except: 
+                print("\n")
+                self.ui.SystemMassage_TextBrowser.append("\n") 
 
 
         # * Выводим собранную статистику в виде графиков
