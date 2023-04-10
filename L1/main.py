@@ -281,7 +281,9 @@ class Window(QMainWindow):
 
         self.ui.bUseGenRandomGraph.clicked.connect(self.NODE_COUNT_IntSpinBox_Changed)
 
-        self.ui.bDropWayGraph.clicked.connect(self.NODE_START_INDEX_IntSpinBox_Changed)  
+        self.ui.bDropWayGraph.clicked.connect(self.NODE_START_INDEX_IntSpinBox_Changed)
+
+        self.ui.WorkType_RadioButton.clicked.connect(self.check)
 
         # Выводим данные весов в таблицу приложения
         self.SendDataWeightToDataGrid_AdjacencyMatrixTodense()
@@ -298,6 +300,16 @@ class Window(QMainWindow):
         self.ui.setWindowTitle('Леонов Владислав 224-322 - Лаб. 1')   # Название главного окна
         self.ui.setWindowIcon(QIcon(file_icon_path))                  # Иконка на гланое окно
         self.ui.show()                                                # Открываем окно формы  
+
+    # method called by radio button
+    def check(self):
+        # checking if it is checked
+        if self.ui.WorkType_RadioButton.isChecked():
+            self.ui.NextGeneration_PushButton.setEnabled(True)
+        # if it is not checked
+        else:
+            self.ui.NextGeneration_PushButton.setEnabled(False)
+             
 
     def NODE_START_INDEX_IntSpinBox_Changed(self):
         get_value_TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
