@@ -153,7 +153,7 @@ class Widget_Draw_Graph(FigureCanvas):
         # Перебираем все полученные маршруты и пририсовываем маршруты графику
         prev = startV
         edgelist_colored = []
-        best_way = best_ways[endV]
+        best_way = best_ways[0]
         full_way = best_way[:best_way.index(endV)+1]
         for next in full_way:
             if next > edge_numbers: continue; 
@@ -921,42 +921,35 @@ class Window(QMainWindow):
             Механизм оценки приспособленности каждой особи к текущим условиями окружающей среды\n
             Алгоритм Дейкстры: https://python-scripts.com/dijkstras-algorithm
             '''
-            s = 0
-            for n, path in enumerate(individual):
-                # n - текущий номер узла до которого определяем маршрут
-                index_path = path.index(n)
-                path = path[:index_path+1]
-                # Считаем длину текущего маршрута, используя значения смежной матрицы D
-                si = startV
-                for j in path:
-                    edge_values = Window.D[si]
-                    s += int(edge_values[j])
-                    si = j
-            return s
+            # Считаем длину текущего маршрута, используя значения смежной матрицы D
+            prev = startV
+            best_sum_way = 0
+            best_way = individual[0]
+            full_way = best_way[:best_way.index(endV)+1]
+            for next in full_way:
+                edge_values = Window.D[prev]
+                best_sum_way += int(edge_values[next])
+                prev = next
+            return best_sum_way
 
 
         def individualCreator():
             '''
             Создаем особь\n
-            [[0,1,2...],[...],...,[...]]\n
+            [[0,1,2...]]\n
             Которая не повторяется в пределах списка
             '''
-            random_values_list = []
-            while len(random_values_list) < LENGTH_D:
-                random_values_path = []
-                # Пока длина списка меньше N, выполняем цикл
-                while len(random_values_path) < LENGTH_D:
-                    # Генерируем случайное целое число от 0 до Длины - 1
-                    number = random.randint(0, LENGTH_D - 1)
-                    # Проверяем, есть ли это число уже в списке
-                    if number not in random_values_path:
-                        # Если нет, добавляем в список
-                        random_values_path.append(number)
-                # Проверяем, есть ли список уже в списке
-                if random_values_path not in random_values_list:
+            
+            random_values_path = []
+            # Пока длина списка меньше N, выполняем цикл
+            while len(random_values_path) < LENGTH_D:
+                # Генерируем случайное целое число от 0 до Длины - 1
+                number = random.randint(0, LENGTH_D - 1)
+                # Проверяем, есть ли это число уже в списке
+                if number not in random_values_path:
                     # Если нет, добавляем в список
-                    random_values_list.append(random_values_path)
-            return Individual(random_values_list)
+                    random_values_path.append(number)
+            return Individual([random_values_path])
 
         def populationCreator(n=0):
             '''Создаем популяцию из n особей'''
@@ -1190,7 +1183,7 @@ class Window(QMainWindow):
 
         #_draw_graph(startV, 0, 0)
         
-        '''
+        
         # * Интерактивный вывод статистики приспособленности
         import time
         plt.ion()
@@ -1203,7 +1196,7 @@ class Window(QMainWindow):
             time.sleep(0.4)
         plt.ioff()
         plt.show()
-        '''
+        
         
 ''' --------Запуск формы------- '''
 if __name__ == '__main__':
