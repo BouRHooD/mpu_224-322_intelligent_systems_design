@@ -31,7 +31,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-''' -------- Главная форма ------- '''
+''' -------- Рисование графиков ------- '''
 # Унаследовав класс FigureCanvas, этот класс является не только PyQt5 Qwidget, 
 # Но и Matplotlib FigureCanvas, который является ключом для соединения pyqt5 и matplotlib.
 class Widget_Draw_Graph(FigureCanvas): 
@@ -71,6 +71,7 @@ class Widget_Draw_Graph(FigureCanvas):
         FigureCanvas.updateGeometry(self)
 
     def generate_edges_list(self, TypeGraph, startV=0, endV=-1, node_count=-1):
+        '''Генерируем уникальные вершины и веса'''
         # Выставляем стандартные значения при загрузки приложения - вершин 5, начальная точка 0, конечная точка 1
         if node_count == -1: node_count = 5; 
         if startV >= node_count: startV = node_count - 1; 
@@ -131,11 +132,13 @@ class Widget_Draw_Graph(FigureCanvas):
         return node_list, edge_list, weight_list
     
     def clear_graph(self):
+        '''Очищаем график от рисунков'''
         for ax in self.figure.axes:
             ax.clear()
         self.draw()
 
     def update_weight_on_graph(self):
+        '''Обновляем веса на существующем графе'''
         G_OLD = Widget_Draw_Graph.G
         pos_local = Widget_Draw_Graph.pos
         edge_weight = Widget_Draw_Graph.edge_weight
@@ -143,6 +146,7 @@ class Widget_Draw_Graph(FigureCanvas):
         self.draw()
 
     def draw_best_graph(self, best_ways, startV, endV):
+        '''Рисуем маршрут поверх существующего графа'''
         G_OLD = Widget_Draw_Graph.G
         pos_local = Widget_Draw_Graph.pos
         edge_weight = Widget_Draw_Graph.edge_weight
@@ -174,6 +178,7 @@ class Widget_Draw_Graph(FigureCanvas):
         self.draw()
 
     def draw_graph(self, startV=0, endV=-1, node_count=-1, is_redraw=True, is_need_new_weight=True, TypeGraph='Рандомный граф', AdjacencyMatrixTodense=None, inTopologyGraph='circular_layout'):
+        '''Рисуем граф с вершинами'''
         if node_count == -1: node_count = 5; 
 
         node_list, edge_list, weight_list = Widget_Draw_Graph.node_list, Widget_Draw_Graph.edge_list, Widget_Draw_Graph.weight_list
@@ -237,7 +242,8 @@ class Widget_Draw_Graph(FigureCanvas):
         # np.savetxt('correlation_matrix.csv',A, delimiter = ',')
         
         if is_redraw: self.draw(); 
-            
+
+''' -------- Главная форма ------- '''   
 class Window(QMainWindow):       
     def __init__(self, *args, **kwargs):
         super(Window, self).__init__(*args, **kwargs)
@@ -418,23 +424,29 @@ class Window(QMainWindow):
         self.ui.tableWidget_Weight.resizeColumnsToContents()
         self.ui.tableWidget_Weight.resizeRowsToContents()
 
-    def Send_TableWidget_GenAlg(self, widget, inList):
-        if inList is None: return; 
-    
-        count_row = len(inList)
-        count_cell = len(inList[0])
+    def Send_TableWidget_GenAlg_append_column(self, widget, in_tuple, is_need_clear=False):
+        if in_tuple is None or len(in_tuple) < 2: return; 
+        in_list = in_tuple[0]
+        in_name_column = in_tuple[1]
 
-        widget.clear()
+        if is_need_clear: widget.clear(); 
+
+        count_row = len(in_list)
+        count_cells = len(in_list[0])
+        count_column = 1 if is_need_clear else widget.columnCount() + 1
+        select_column = count_column - 1
+
         widget.setRowCount(count_row)
-        widget.setColumnCount(count_cell)
+        widget.setColumnCount(count_column)
+        widget.setHorizontalHeaderItem(select_column, QTableWidgetItem(in_name_column))
 
         for i in range(count_row):
-            for j in range(count_cell):
-                value = inList[i][j]
-                widget.setItem(i, j, QTableWidgetItem(str(value)))
+            for j in range(count_cells):
+                value = in_list[i][j]
+                widget.setItem(i, select_column, QTableWidgetItem(str(value)))
 
-        widget.resizeColumnsToContents()
-        widget.resizeRowsToContents()
+        #widget.resizeColumnsToContents()
+        #widget.resizeRowsToContents()
 
     def bUseGenRandomGraph_Clicked(self):
         pass
@@ -445,20 +457,11 @@ class Window(QMainWindow):
     def SystemMassage_TextBrowser_append(self, text):
         self.ui.SystemMassage_TextBrowser.append(text)
 
-    def population_value_signal_change_table(self, list):
-        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg, list)
+    def population_value_signal_change_table(self, in_tuple):
+        self.Send_TableWidget_GenAlg_append_column(self.ui.tableWidget_GenAlg, in_tuple, is_need_clear=True)
 
-    def population_value_signal_stage_0_change_table(self, list):
-        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg_stage_0, list)
-
-    def population_value_signal_stage_1_change_table(self, list):
-        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg_stage_1, list)
-
-    def population_value_signal_stage_2_change_table(self, list):
-        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg_stage_2, list)
-
-    def population_value_signal_stage_3_change_table(self, list):
-        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg_stage_3, list)
+    def population_value_signal_append_column_change_table(self, in_tuple):
+        self.Send_TableWidget_GenAlg_append_column(self.ui.tableWidget_GenAlg, in_tuple)
 
     def best_value_signal_change_graph(self, list):
         # Сбрасываем на исходный график
@@ -466,37 +469,15 @@ class Window(QMainWindow):
         # Рисуем новый путь
         self.canvas.draw_best_graph(list, Window.pool_startV, Window.pool_endV)
 
+    D = None
     class SenderMessage(QObject):
         SystemMassage_TextBrowser_value_signal = pyqtSignal(str)
-        population_value_signal = pyqtSignal(list)
-        population_value_signal_stage_0 = pyqtSignal(list)
-        population_value_signal_stage_1 = pyqtSignal(list)
-        population_value_signal_stage_2 = pyqtSignal(list)
-        population_value_signal_stage_3 = pyqtSignal(list)
+        population_value_signal = pyqtSignal(tuple)
+        population_value_signal_append_column = pyqtSignal(tuple)
         best_value_signal = pyqtSignal(list)
         
-
         def __init__(self):
             super().__init__()
-
-        @pyqtSlot()
-        def test_run(self):
-            self.SystemMassage_TextBrowser_value_signal.emit("Привет!")
-            time.sleep(1)
-            self.SystemMassage_TextBrowser_value_signal.emit("Я PyQt5.")
-            time.sleep(1)
-            self.SystemMassage_TextBrowser_value_signal.emit("Мы сегодня тестируем...")
-            time.sleep(1)
-            self.SystemMassage_TextBrowser_value_signal.emit("Класс QThread.")
-            for i in range(0, 10, 1):
-                self.SystemMassage_TextBrowser_value_signal.emit(str(f'Шаг: {i}/10'))
-
-                # Пауза
-                while Window.pool_IsPauseTread: pass; 
-                Window.pool_IsPauseTread = True; 
-
-                time.sleep(0.1)
-            self.SystemMassage_TextBrowser_value_signal.emit("Тест завершён.")
 
         @pyqtSlot()
         def gen_alg_run(self):
@@ -544,43 +525,45 @@ class Window(QMainWindow):
                 Механизм оценки приспособленности каждой особи к текущим условиями окружающей среды\n
                 Алгоритм Дейкстры: https://python-scripts.com/dijkstras-algorithm
                 '''
-                s = 0
-                for n, path in enumerate(individual):
-                    # n - текущий номер узла до которого определяем маршрут
-                    index_path = path.index(n)
-                    path = path[:index_path+1]
-                    # Считаем длину текущего маршрута, используя значения смежной матрицы D
-                    si = startV
-                    for j in path:
-                        edge_values = Window.D[si]
-                        s += int(edge_values[j])
-                        si = j
-                return s
+                # Считаем длину текущего маршрута, используя значения смежной матрицы D
+                prev = startV
+                best_sum_way = 0
+                best_way = individual[0]
+                full_way = best_way[:best_way.index(endV)+1]
+                for next in full_way:
+                    edge_values = Window.D[prev]
+                    best_sum_way += int(edge_values[next])
+                    prev = next
+                return best_sum_way
 
             def individualCreator():
                 '''
                 Создаем особь\n
-                [[0,1,2...],[...],...,[...]]\n
-                Которая не повторяется в пределах списка
+                [[0,1,2...]]\n
+                Ген не повторяется в пределах списка и начальная и конечная вершина не генерируется
                 '''
-                random_values_list = []
-                while len(random_values_list) < LENGTH_D:
-                    random_values_path = []
-                    # Пока длина списка меньше N, выполняем цикл
-                    while len(random_values_path) < LENGTH_D:
-                        # Генерируем случайное целое число от 0 до Длины - 1
-                        number = random.randint(0, LENGTH_D - 1)
-                        # Проверяем, есть ли это число уже в списке
-                        if number not in random_values_path:
-                            # Если нет, добавляем в список
-                            random_values_path.append(number)
-                    # Проверяем, есть ли список уже в списке
-                    if random_values_path not in random_values_list:
+                
+                random_values_path = []
+                # Пока длина списка меньше N, выполняем цикл
+                while len(random_values_path) < LENGTH_D:
+                    # Генерируем случайное целое число от 0 до Длины - 1
+                    number = random.randint(0, LENGTH_D - 1)
+                    # Проверяем, есть ли это число уже в списке
+                    if number not in random_values_path:
                         # Если нет, добавляем в список
-                        random_values_list.append(random_values_path)
-                return Individual(random_values_list)
+                        random_values_path.append(number)
+                return Individual([random_values_path])
 
             def populationCreator(n=0):
+                '''Создаем популяцию из n индивидуальных особей'''
+                list_individual = []
+                count_cycle = 0
+                while len(list_individual) < n and count_cycle < n:
+                    individual = individualCreator()
+                    if individual not in list_individual:
+                        list_individual.append(individual)
+                    count_cycle += 1
+                return list_individual
                 '''Создаем популяцию из n особей'''
                 return list([individualCreator() for i in range(n)])
 
@@ -726,18 +709,16 @@ class Window(QMainWindow):
                 individual.fitness.values = fitnessValue
 
             fitnessValues = [ind.fitness.values for ind in population]
-            # До тех пор пока не найдем лучшее решенее или не пройдем все поколения
+            # * До тех пор пока не найдем лучшее решенее или не пройдем все поколения
             while generationCounter < MAX_GENERATIONS:
-                # f'Поколение {generationCounter}/{MAX_GENERATIONS}, шаг 0 - до турнирного отбора'
-                self.population_value_signal_stage_0.emit(population)
+                self.population_value_signal.emit((population, '(1) Исходная популяция'))
 
                 generationCounter += 1
 
                 # * Отбираем лучшие особи путем турнира
                 offspring = selTournament(population, len(population))
                 offspring = list(map(clone, offspring))
-                # f'Поколение {generationCounter}/{MAX_GENERATIONS}, шаг 1 - после турнирного отбора и до скрещивания'
-                self.population_value_signal_stage_1.emit(population)
+                self.population_value_signal_append_column.emit((population, '(2) После селекции и до скрещивания'))
 
                 # * Выполняем скрещивание неповторяющихся пар родителей 
                 offspring_even, offspring_odd = offspring[::2], offspring[1::2]
@@ -746,8 +727,7 @@ class Window(QMainWindow):
                     # Если срабатывает условие, то родители становятся потомками, иначе они остаются родителями в популяции
                     if random.random() < P_CROSSOVER/LENGTH_D:
                         cxOrdered_v2(child1, child2)
-                # f'Поколение {generationCounter}/{MAX_GENERATIONS}, шаг 2 - после скрещивания и до мутации'
-                self.population_value_signal_stage_2.emit(population)
+                self.population_value_signal_append_column.emit((population, '(3) После скрещивания и до мутации'))
 
                 # * Выполняем мутацию
                 for mutant in offspring:
@@ -761,9 +741,8 @@ class Window(QMainWindow):
 
                 # * Обновляем список популяции
                 population[:] = offspring
-                # Итоговая популяция
-                self.population_value_signal.emit(population)
-                self.population_value_signal_stage_3.emit(population)
+                # * Итоговая популяция
+                self.population_value_signal_append_column.emit((population, '(4) Итоговая популяция'))
 
                 # * Обновляем список значений приспособленности каждой особи в популяции
                 fitnessValues = [ind.fitness.values for ind in population]
@@ -785,14 +764,9 @@ class Window(QMainWindow):
 
                 try:
                     # Считаем длину текущего маршрута, используя значения смежной матрицы D
-                    prev = startV
-                    best_sum_way = 0
-                    best_way = best[endV]
+                    best_way = best[0]
                     full_way = best_way[:best_way.index(endV)+1]
-                    for next in full_way:
-                        edge_values = Window.D[prev]
-                        best_sum_way += int(edge_values[next])
-                        prev = next
+                    best_sum_way = oneDijkstraFitness(best)
 
                     # Выводим информацию
                     print(f"Лучший путь от {startV} до {endV} = {best_way} = {full_way}, приспособленность пути = {best_sum_way}\n")
@@ -803,7 +777,7 @@ class Window(QMainWindow):
 
                 self.best_value_signal.emit(best)
 
-                # Пауза
+                # Пауза (ждем нажатия кнопки "шаг")
                 while Window.pool_IsPauseTread: pass; 
                 Window.pool_IsPauseTread = True; 
     
@@ -841,18 +815,13 @@ class Window(QMainWindow):
             self.sender_message.moveToThread(self.thread)
             self.sender_message.SystemMassage_TextBrowser_value_signal.connect(self.SystemMassage_TextBrowser_append)
             self.sender_message.population_value_signal.connect(self.population_value_signal_change_table)
-            self.sender_message.population_value_signal_stage_0.connect(self.population_value_signal_stage_0_change_table)
-            self.sender_message.population_value_signal_stage_1.connect(self.population_value_signal_stage_1_change_table)
-            self.sender_message.population_value_signal_stage_2.connect(self.population_value_signal_stage_2_change_table)
-            self.sender_message.population_value_signal_stage_3.connect(self.population_value_signal_stage_3_change_table)
+            self.sender_message.population_value_signal_append_column.connect(self.population_value_signal_append_column_change_table)
             self.sender_message.best_value_signal.connect(self.best_value_signal_change_graph)
             self.thread.started.connect(self.sender_message.gen_alg_run)
             self.thread.start()
         else:
             self.UseGenAlg_Clicked()
 
-
-    D = None
     def UseGenAlg_Clicked(self):
 
         self.NODE_START_INDEX_IntSpinBox_Changed()
@@ -932,12 +901,11 @@ class Window(QMainWindow):
                 prev = next
             return best_sum_way
 
-
         def individualCreator():
             '''
             Создаем особь\n
             [[0,1,2...]]\n
-            Которая не повторяется в пределах списка
+            Ген не повторяется в пределах списка и начальная и конечная вершина не генерируется
             '''
             
             random_values_path = []
@@ -951,9 +919,16 @@ class Window(QMainWindow):
                     random_values_path.append(number)
             return Individual([random_values_path])
 
-        def populationCreator(n=0):
-            '''Создаем популяцию из n особей'''
-            return list([individualCreator() for i in range(n)])
+        def populationCreator(startV, endV, n=0):
+            '''Создаем популяцию из n индивидуальных особей'''
+            list_individual = []
+            count_cycle = 0
+            while len(list_individual) < n and count_cycle < n:
+                individual = individualCreator()
+                if individual not in list_individual:
+                    list_individual.append(individual)
+                count_cycle += 1
+            return list_individual
 
         def clone(value):
             # Создаем хромосому на основе списка (value[:] - делает копию списка)
@@ -961,7 +936,7 @@ class Window(QMainWindow):
             ind.fitness.values = value.fitness.values
             return ind
 
-        def selTournament(population, p_len):
+        def selectionTournament(population, p_len):
             '''Турнирный отбор'''
             offspring = []
             for n in range(p_len):
@@ -1081,7 +1056,7 @@ class Window(QMainWindow):
                         # Меняем местами гены i и j
                         new_value_i, new_value_j = new_mutant[j], new_mutant[i]
                         new_mutant[i], new_mutant[j] = new_value_i, new_value_j
-                        in_mutant[copy_mutant.index(select_mutant)] = new_mutant
+                in_mutant[copy_mutant.index(select_mutant)] = new_mutant
 
         # Обнуляем статистику
         generationCounter = 0
@@ -1091,44 +1066,47 @@ class Window(QMainWindow):
         best = None
 
         # Создаем начальную популяцию
-        population = populationCreator(n=POPULATION_SIZE)
+        population = populationCreator(startV, endV, n=POPULATION_SIZE)
 
         fitnessValues = list(map(oneDijkstraFitness, population))
         for individual, fitnessValue in zip(population, fitnessValues):
             individual.fitness.values = fitnessValue
 
         fitnessValues = [ind.fitness.values for ind in population]
+        orig_population, selection_population, cross_population, mut_population  = [], [], [], []
         # До тех пор пока не найдем лучшее решенее или не пройдем все поколения
         while generationCounter < MAX_GENERATIONS:
-            
-            # Запоминаем параметры сети
-            # if self.ui.WorkType_RadioButton.isChecked() is True: pass; 
+            orig_population = population.copy()
 
             generationCounter += 1
             # * Отбираем лучшие особи путем турнира
-            offspring = selTournament(population, len(population))
-            offspring = list(map(clone, offspring))
+            selection_population = selectionTournament(population, len(population))
 
             # * Выполняем скрещивание неповторяющихся пар родителей 
-            offspring_even, offspring_odd = offspring[::2], offspring[1::2]
-            for child1, child2 in zip(offspring_even, offspring_odd):
+            cross_population = []
+            cross_population_even, cross_population_odd = selection_population[::2], selection_population[1::2]
+            for child1, child2 in zip(cross_population_even, cross_population_odd):
                 # Если меньше вероятности скрещивания, то скрещиваем
                 # Если срабатывает условие, то родители становятся потомками, иначе они остаются родителями в популяции
                 if random.random() < P_CROSSOVER/LENGTH_D:
-                    cxOrdered_v2(child1, child2)
+                    cxOrdered(child1, child2)
+                cross_population.append(child1.copy())
+                cross_population.append(child2.copy())
 
             # * Выполняем мутацию
-            for mutant in offspring:
+            mut_population = []
+            for mutant in cross_population:
                 if random.random() < P_MUTATION/LENGTH_D:
                     mutationShuffleIndexes(mutant, 1.0/LENGTH_CHROM/10)
+                mut_population.append(Individual(mutant.copy()))
 
             # * Обновляем значение приспособленности новой популяции
-            freshFitnessValues = list(map(oneDijkstraFitness, offspring))
-            for individual, fitnessValue in zip(offspring, freshFitnessValues):
+            freshFitnessValues = list(map(oneDijkstraFitness, mut_population))
+            for individual, fitnessValue in zip(mut_population, freshFitnessValues):
                 individual.fitness.values = fitnessValue
 
             # * Обновляем список популяции
-            population[:] = offspring
+            population[:] = mut_population.copy()
 
             # * Обновляем список значений приспособленности каждой особи в популяции
             fitnessValues = [ind.fitness.values for ind in population]
@@ -1152,7 +1130,7 @@ class Window(QMainWindow):
                 # Считаем длину текущего маршрута, используя значения смежной матрицы D
                 prev = startV
                 best_sum_way = 0
-                best_way = best[endV]
+                best_way = best[0]
                 full_way = best_way[:best_way.index(endV)+1]
                 for next in full_way:
                     edge_values = Window.D[prev]
@@ -1167,7 +1145,10 @@ class Window(QMainWindow):
                 self.ui.SystemMassage_TextBrowser.append("\n") 
 
         # * Выводим таблицу популяции
-        self.Send_TableWidget_GenAlg(self.ui.tableWidget_GenAlg, population)
+        self.Send_TableWidget_GenAlg_append_column(self.ui.tableWidget_GenAlg, (orig_population, '(1) Исходная'), is_need_clear=True)
+        self.Send_TableWidget_GenAlg_append_column(self.ui.tableWidget_GenAlg, (selection_population, '(2) Селекция'))
+        self.Send_TableWidget_GenAlg_append_column(self.ui.tableWidget_GenAlg, (cross_population, '(3) Скрещивания'))
+        self.Send_TableWidget_GenAlg_append_column(self.ui.tableWidget_GenAlg, (population, '(5) Мутации'))
 
         # * Выводим собранную статистику в виде графиков
         plt.plot(minFitnessValues, color='red')
@@ -1183,7 +1164,7 @@ class Window(QMainWindow):
 
         #_draw_graph(startV, 0, 0)
         
-        
+        '''
         # * Интерактивный вывод статистики приспособленности
         import time
         plt.ion()
@@ -1196,7 +1177,7 @@ class Window(QMainWindow):
             time.sleep(0.4)
         plt.ioff()
         plt.show()
-        
+        '''
         
 ''' --------Запуск формы------- '''
 if __name__ == '__main__':
