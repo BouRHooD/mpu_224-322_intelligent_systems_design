@@ -1,3 +1,4 @@
+!!!!! Самое важное: https://library.samdu.uz/files/4add3a73676076bfadec0ae25f5b533b_Вирсански_Э_Генетические_алгоритмы_на_Python_2020.pdf
 ########################################################################################################################
 # Урок 1: https://www.youtube.com/watch?v=52g2Qi_4X3E
 # Урок 2: https://www.youtube.com/watch?v=IxFyw4qFytA&t
