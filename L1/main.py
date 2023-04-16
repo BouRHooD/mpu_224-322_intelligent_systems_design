@@ -261,6 +261,7 @@ class Window(QMainWindow):
         self.worker_gen_alg.population_value_signal.connect(self.population_value_signal_change_table)
         self.worker_gen_alg.population_value_signal_append_column.connect(self.population_value_signal_append_column_change_table)
         self.worker_gen_alg.best_value_signal.connect(self.best_value_signal_change_graph)
+        self.worker_gen_alg.draw_result_graph_value_signal.connect(self.draw_result_graph_value_signal)
 
         # Поток для работы генетического алгоритма
         self.qthread_gen_alg = QThread(parent=self)
@@ -342,11 +343,9 @@ class Window(QMainWindow):
             self.ui.NextGeneration_PushButton.setEnabled(False)
             Window.IsStateChangedType = False
 
-    @pyqtSlot()
     def change_state(self):
         if Window.pool_IsPauseTread: Window.pool_IsPauseTread = False;     
 
-    @pyqtSlot()
     def NODE_START_INDEX_IntSpinBox_Changed(self):
         get_value_TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
         get_value_startV    = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
@@ -356,7 +355,6 @@ class Window(QMainWindow):
         self.canvas.clear_graph()
         self.canvas.draw_graph(startV=get_value_startV, endV=get_value_endV, node_count=get_value_NodeCount, TypeGraph=get_value_TypeGraph, is_need_new_weight=False, inTopologyGraph=TopologyGraph)
 
-    @pyqtSlot()
     def NODE_COUNT_IntSpinBox_Changed(self):
         get_value_TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
         get_value_NodeCount = self.ui.NODE_COUNT_IntSpinBox.value()
@@ -380,7 +378,6 @@ class Window(QMainWindow):
         # Выводим данные весов в таблицу приложения после отрисовки графика так как обновится AdjacencyMatrixTodense
         self.SendDataWeightToDataGrid_AdjacencyMatrixTodense()
 
-    @pyqtSlot()
     def UseRandomSettings_CheckBox_currentTextChanged(self, value):
         get_value_TypeGraph = self.ui.TypeGraph_ComboBox.currentText()
         get_value_startV    = self.ui.NODE_START_INDEX_IntSpinBox.value() - 1
@@ -399,7 +396,6 @@ class Window(QMainWindow):
             self.ui.UseRandomSettings_IntSpinBox.setEnabled(False)
 
     is_changed_value_on_check_change = False
-    @pyqtSlot()
     def check_change(self):
         if Window.is_changed_value_on_check_change: return; 
     
@@ -431,7 +427,6 @@ class Window(QMainWindow):
         self.ui.tableWidget_Weight.setItem(col, row, QTableWidgetItem(cell_text))
         Window.is_changed_value_on_check_change = False
 
-    @pyqtSlot()
     def SendDataWeightToDataGrid_AdjacencyMatrixTodense(self):
         AdjacencyMatrixTodense = Widget_Draw_Graph.AdjacencyMatrixTodense
 
@@ -450,7 +445,6 @@ class Window(QMainWindow):
         self.ui.tableWidget_Weight.resizeColumnsToContents()
         self.ui.tableWidget_Weight.resizeRowsToContents()
 
-    @pyqtSlot()
     def Send_TableWidget_GenAlg_append_column(self, widget, in_tuple, is_need_clear=False):
         if in_tuple is None or len(in_tuple) < 2: return; 
         in_list = in_tuple[0]
@@ -473,7 +467,6 @@ class Window(QMainWindow):
         #widget.resizeColumnsToContents()
         #widget.resizeRowsToContents()
 
-    @pyqtSlot()
     def bDropWayGraph_Clicked(self):
         self.canvas.drop_best_graph()
 
@@ -492,12 +485,36 @@ class Window(QMainWindow):
         # Рисуем новый путь
         self.canvas.draw_best_graph(list, Window.pool_startV, Window.pool_endV)
 
+    def draw_result_graph_value_signal(self, minFitnessValues, avgFitnessValues, vals):
+        # * Выводим собранную статистику в виде графиков
+        plt.plot(minFitnessValues, color='red')
+        plt.plot(avgFitnessValues, color='green')
+        plt.xlabel('Поколение')
+        plt.ylabel('Мин/средняя приспособленность')
+        plt.title('Зависимость минимальной и средней приспособленности от поколения')
+        plt.show()
+
+        '''
+        # * Интерактивный вывод статистики приспособленности
+        plt.ion()
+        fig, ax = plt.subplots()
+        line, = ax.plot(vals[0], ' o', markersize=1)
+        for v in vals:
+            line.set_ydata(v)
+            plt.draw()
+            plt.gcf().canvas.flush_events()
+            time.sleep(0.4)
+        plt.ioff()
+        plt.show()
+        '''
+
     D = None
     class GenAlg(QObject):
         SystemMassage_TextBrowser_value_signal = pyqtSignal(str)
         population_value_signal = pyqtSignal(tuple)
         population_value_signal_append_column = pyqtSignal(tuple)
         best_value_signal = pyqtSignal(list)
+        draw_result_graph_value_signal = pyqtSignal(list, list, list)
         
         def __init__(self):
             super().__init__()
@@ -756,7 +773,7 @@ class Window(QMainWindow):
                 # Если стоит режим "Пошаговый"
                 if Window.IsStateChangedType:
                     # Отображаем статистику генетического алгоритма
-                    self.Show_Stats(orig_population, selection_population, cross_population, population, best)
+                    self.Show_Stats(orig_population, selection_population, cross_population, population, best, minFitnessValues, avgFitnessValues, vals)
                     # Пауза (ждем нажатия кнопки "шаг")
                     while Window.pool_IsPauseTread: 
                         # Выходим из потока, если поменялось состояние
@@ -767,9 +784,9 @@ class Window(QMainWindow):
             # Если стоит режим "Циклический", то отображаем статистику после завершения генетического алгоритма
             if Window.IsStateChangedType is False:
                 # Отображаем статистику генетического алгоритма
-                self.Show_Stats(orig_population, selection_population, cross_population, population, best)
+                self.Show_Stats(orig_population, selection_population, cross_population, population, best, minFitnessValues, avgFitnessValues, vals, use_graph = True)
 
-        def Show_Stats(self, orig_population, selection_population, cross_population, population, best):
+        def Show_Stats(self, orig_population, selection_population, cross_population, population, best, minFitnessValues, avgFitnessValues, vals, use_graph = False):
             # * Выводим таблицу популяции (П. - Популяция)
             self.population_value_signal.emit((orig_population, '(1) П. Исходная'))
             self.population_value_signal_append_column.emit((selection_population, '(2) П. Селекции'))
@@ -779,27 +796,9 @@ class Window(QMainWindow):
             # * Выводим путь на граф
             self.best_value_signal.emit(best)
 
-            '''
             # * Выводим собранную статистику в виде графиков
-            plt.plot(minFitnessValues, color='red')
-            plt.plot(avgFitnessValues, color='green')
-            plt.xlabel('Поколение')
-            plt.ylabel('Мин/средняя приспособленность')
-            plt.title('Зависимость минимальной и средней приспособленности от поколения')
-            plt.show()
-
-            # * Интерактивный вывод статистики приспособленности
-            plt.ion()
-            fig, ax = plt.subplots()
-            line, = ax.plot(vals[0], ' o', markersize=1)
-            for v in vals:
-                line.set_ydata(v)
-                plt.draw()
-                plt.gcf().canvas.flush_events()
-                time.sleep(0.4)
-            plt.ioff()
-            plt.show()
-            '''
+            if use_graph:
+                self.draw_result_graph_value_signal.emit(minFitnessValues, avgFitnessValues, vals)
     
     pool_IsPauseTread = True
     pool_startV, pool_endV = None, None
