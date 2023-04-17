@@ -568,6 +568,7 @@ class Window(QMainWindow):
                 # Считаем длину текущего маршрута, используя значения смежной матрицы D
                 prev = startV
                 best_sum_way = 0
+                if endV not in individual: return 10000; 
                 full_way = individual[:individual.index(endV)+1]
                 for next in full_way:
                     edge_values = Window.D[prev]
@@ -591,8 +592,8 @@ class Window(QMainWindow):
                 count_cycle = 0
                 while len(list_individual) < n and count_cycle < n + 1:
                     individual = individualCreator()
-                    #if individual not in list_individual:
-                    list_individual.append(individual)
+                    if individual not in list_individual:
+                        list_individual.append(individual)
                     count_cycle += 1
                 return list_individual
 
@@ -608,14 +609,11 @@ class Window(QMainWindow):
                     min_offspring = min([p1, p2, p3], key=lambda ind: ind.fitness.values)
                     offspring.append(min_offspring)
                 return offspring
-
+            
             def cxOrdered(in_parent1, in_parent2):
                 '''Упорядоченное скрещивание'''
                 '''https://proproprogs.ru/ga/ga-obzor-metodov-otbora-skreshchivaniya-i-mutacii'''
                 ind1, ind2 = in_parent1[:], in_parent2[:]
-
-                # Фиксируем начальную и конечную вершины, запоминая их индексы в списке
-                startV_index, endV_index = ind1.index(startV), ind1.index(endV)
 
                 # Выбираем случайный участок хромосомы одного из родителей
                 size = min(len(ind1), len(ind2))
@@ -645,15 +643,6 @@ class Window(QMainWindow):
                     if temp2[i] not in ind2:
                         ind2[index2] = temp2[i]
                         index2 += 1
-
-                # Меняем местами фиксированные позиции
-                startV_index_new_1, endndV_index_new_1 = ind1.index(startV), ind1.index(endV)
-                ind1[startV_index_new_1], ind1[startV_index] = ind1[startV_index], ind1[startV_index_new_1]
-                ind1[endndV_index_new_1], ind1[endV_index] = ind1[endV_index], ind1[endndV_index_new_1]
-
-                startV_index_new_2, endndV_index_new_2 = ind2.index(startV), ind2.index(endV)
-                ind2[startV_index_new_2], ind2[startV_index] = ind2[startV_index], ind2[startV_index_new_2]
-                ind2[endndV_index_new_2], ind2[endV_index] = ind2[endV_index], ind2[endndV_index_new_2]
                         
                 return ind1, ind2
 
@@ -667,14 +656,12 @@ class Window(QMainWindow):
                 length = len(new_mutant)
                 # Для каждого гена в хромосоме
                 for i in range(length):
-                    if shuffle_end_start and (i == startV or i == endV): continue; 
                     # Случайно выбираем, будет ли мутация
                     if random.random() < indpd:
                         j = i
                         # Случайно выбираем другой ген для обмена местами
                         while j == i:
                             rand_val = random.randint(0, length - 1)
-                            if shuffle_end_start and (rand_val == startV or rand_val == endV): continue; 
                             j = rand_val
                         # Меняем местами гены i и j
                         new_value_i, new_value_j = new_mutant[j], new_mutant[i]
@@ -711,19 +698,42 @@ class Window(QMainWindow):
                 for child1, child2 in zip(cross_population_even, cross_population_odd):
                     # Если меньше вероятности скрещивания, то скрещиваем
                     # Если срабатывает условие, то родители становятся потомками, иначе они остаются родителями в популяции
-                    if random.random() < P_CROSSOVER/LENGTH_D:
+                    if random.random() < P_CROSSOVER:
                         new_child1, new_child2 = cxOrdered(child1, child2)
+
+                        # Мутируем до тех пор, пока не станет уникальным значением
+                        count_while = 0
+                        while new_child1 in cross_population and count_while < MAX_GENERATIONS:
+                            new_child1 = mutationShuffleIndexes(new_child1, P_MUTATION)
+                            count_while += 1
                         cross_population.append(Individual(new_child1.copy()))
+
+                        # Мутируем до тех пор, пока не станет уникальным значением
+                        count_while = 0
+                        while new_child2 in cross_population and count_while < MAX_GENERATIONS:
+                            new_child2 = mutationShuffleIndexes(new_child2, P_MUTATION)
+                            count_while += 1
                         cross_population.append(Individual(new_child2.copy()))
                     else:
+                        # Мутируем до тех пор, пока не станет уникальным значением
+                        count_while = 0
+                        while child1 in cross_population and count_while < MAX_GENERATIONS:
+                            child1 = mutationShuffleIndexes(child1, P_MUTATION)
+                            count_while += 1
                         cross_population.append(Individual(child1.copy()))
+
+                        # Мутируем до тех пор, пока не станет уникальным значением
+                        count_while = 0
+                        while child2 in cross_population and count_while < MAX_GENERATIONS:
+                            child2 = mutationShuffleIndexes(child2, P_MUTATION)
+                            count_while += 1
                         cross_population.append(Individual(child2.copy()))
 
                 # * Выполняем мутацию
                 mut_population = []
                 for mutant in cross_population:
-                    if random.random() < P_MUTATION/LENGTH_D:
-                        new_mutant = mutationShuffleIndexes(mutant, 1.0/LENGTH_CHROM/10)
+                    if random.random() < P_MUTATION:
+                        new_mutant = mutationShuffleIndexes(mutant, P_MUTATION)
                         mut_population.append(Individual(new_mutant.copy()))
                     # Мутируем, если в популяции есть идентичные с рандомом 0.5 с изменением стартовых вершин
                     #elif mutant in mut_population and random.random() < 0.5:
