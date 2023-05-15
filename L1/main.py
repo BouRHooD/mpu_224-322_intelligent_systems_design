@@ -484,6 +484,12 @@ class Window(QMainWindow):
         self.NODE_START_INDEX_IntSpinBox_Changed()
         # Рисуем новый путь
         self.canvas.draw_best_graph(list, Window.pool_startV, Window.pool_endV)
+        # Проверяем, действительно ли путь кородкий
+        G_OLD = Widget_Draw_Graph.G
+        nx_g_shortest_path = nx.shortest_path(G_OLD,source=Window.pool_startV+1,target=Window.pool_endV+1, weight='weight')
+        nx_g_shortest_path_minus = [x - 1 for x in nx_g_shortest_path]
+        nx_g_shortest_path_minus_text = f"Короткий путь nx: {nx_g_shortest_path_minus}"
+        print(nx_g_shortest_path_minus_text); self.ui.SystemMassage_TextBrowser.append(nx_g_shortest_path_minus_text)
 
     def draw_result_graph_value_signal(self, minFitnessValues, avgFitnessValues, vals):
         # * Выводим собранную статистику в виде графиков
@@ -698,7 +704,7 @@ class Window(QMainWindow):
                 for child1, child2 in zip(cross_population_even, cross_population_odd):
                     # Если меньше вероятности скрещивания, то скрещиваем
                     # Если срабатывает условие, то родители становятся потомками, иначе они остаются родителями в популяции
-                    if random.random() < P_CROSSOVER:
+                    if random.random() < P_CROSSOVER / LENGTH_D:
                         new_child1, new_child2 = cxOrdered(child1, child2)
 
                         # Мутируем до тех пор, пока не станет уникальным значением
@@ -732,8 +738,8 @@ class Window(QMainWindow):
                 # * Выполняем мутацию
                 mut_population = []
                 for mutant in cross_population:
-                    if random.random() < P_MUTATION:
-                        new_mutant = mutationShuffleIndexes(mutant, P_MUTATION)
+                    if random.random() < P_MUTATION / LENGTH_CHROM:
+                        new_mutant = mutationShuffleIndexes(mutant, P_MUTATION / LENGTH_CHROM)
                         mut_population.append(Individual(new_mutant.copy()))
                     # Мутируем, если в популяции есть идентичные с рандомом 0.5 с изменением стартовых вершин
                     #elif mutant in mut_population and random.random() < 0.5:
