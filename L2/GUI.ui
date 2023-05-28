@@ -67,7 +67,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="tab_2">
     <attribute name="title">
@@ -484,7 +484,7 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>50</y>
+        <y>60</y>
         <width>311</width>
         <height>41</height>
        </rect>
@@ -497,7 +497,7 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>130</y>
+        <y>110</y>
         <width>311</width>
         <height>20</height>
        </rect>
@@ -510,29 +510,13 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>150</y>
+        <y>130</y>
         <width>311</width>
         <height>20</height>
        </rect>
       </property>
       <property name="text">
        <string>Всего разметок: 0 шт.</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="bLoadWeightsCSV_Recognition">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>90</y>
-        <width>311</width>
-        <height>41</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Загрузить веса (*.csv)</string>
       </property>
      </widget>
     </widget>
