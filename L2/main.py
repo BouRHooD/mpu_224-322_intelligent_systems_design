@@ -39,12 +39,14 @@ class Window(QMainWindow):
         self.ui.bPerceptronLearn.clicked.connect(self.bPerceptronLearn_clicked)
         self.ui.bPerceptron_Recognition.clicked.connect(self.bPerceptron_Recognition_clicked)
         self.ui.bPerceptron_GetStats.clicked.connect(self.bPerceptron_GetStats_clicked)
+        self.ui.b_Perceptron_Learn_ShowWeights.clicked.connect(self.b_Perceptron_Learn_ShowWeights_clicked)
 
         self.ui.cbListLoadedImages.currentTextChanged.connect(self.cbListLoadedImages_TextChanged) 
         self.ui.cbListLoadedImages_Recognition.currentTextChanged.connect(self.cbListLoadedImages_Recognition_TextChanged) 
-
+        self.ui.cb_Perceptron_Learn.currentTextChanged.connect(self.cb_Perceptron_Learn_TextChanged) 
+        
         # Загружаем список функций активации
-        list_func_activate_name = ["ReLU", "dReLU", "softmax", "sigmoid"]
+        list_func_activate_name = ["sigmoid", "ReLU"]
         self.ui.cbListFuncActivate.clear()
         self.ui.cbListFuncActivate.addItems(list_func_activate_name)
 
@@ -198,7 +200,7 @@ class Window(QMainWindow):
             self.ui.cbListLoadedImages_Recognition.addItems(list_images_name)
 
             '''Активируем активность других виджетов'''
-            self.ui.bLoadWeightsCSV_Recognition.setEnabled(True)
+            #self.ui.bLoadWeightsCSV_Recognition.setEnabled(True)
         except Exception as ex:
             if exception_off is False: print(ex); traceback.print_exc(); 
 
@@ -214,14 +216,19 @@ class Window(QMainWindow):
             self.perceptron = Perceptron_utils.Perceptron(input_size=28*28, output_size=10)
 
             # Выбираем функцию активации в соотвествии с пользовательским выбором
-            self.selected_func_activate = self.perceptron.dReLU
-            if get_func_activation == "ReLU": self.selected_func_activate = self.perceptron.ReLU; 
-            elif get_func_activation == "dReLU": self.selected_func_activate = self.perceptron.dReLU; 
-            elif get_func_activation == "softmax": self.selected_func_activate = self.perceptron.softmax; 
+            self.selected_func_activate = self.perceptron.sigmoid
+            if get_func_activation == "ReLU": self.selected_func_activate = self.perceptron.ReLU;  
             elif get_func_activation == "sigmoid": self.selected_func_activate = self.perceptron.sigmoid; 
             
             # Обучение модели перцептрона
-            self.perceptron.train(in_train_images=self.train_images, in_train_labels=self.train_labels, in_func_activate=self.selected_func_activate, in_count_use_img=get_count_image_in_train_list, in_epochs=get_epoch_count, in_learning_rate=get_learning_rate, ui_progress_bar=self.ui.pbLearning, window_ui=self.ui)
+            self.weights_history = []
+            self.perceptron.train(in_train_images=self.train_images, in_train_labels=self.train_labels, in_func_activate=self.selected_func_activate, in_count_use_img=get_count_image_in_train_list, in_epochs=get_epoch_count, in_learning_rate=get_learning_rate, ui_progress_bar=self.ui.pbLearning, window=self)
+
+            list_names_history = []
+            for i, x in enumerate(self.weights_history):
+                list_names_history.append(f"Эпоха {i}")    
+            self.ui.cb_Perceptron_Learn.clear()
+            self.ui.cb_Perceptron_Learn.addItems(list_names_history)
 
             '''Активируем активность других виджетов'''
             self.ui.bPerceptron_Recognition.setEnabled(True)
@@ -229,6 +236,28 @@ class Window(QMainWindow):
         except Exception as ex:
             print(ex); traceback.print_exc(); 
 
+    def Send_tw_Perceptron_Learn_waights(self, widget, in_weights, is_need_clear=False):
+        if in_weights is None or len(in_weights) < 2: return; 
+
+        if is_need_clear: widget.clear(); 
+
+        count_row = len(in_weights)
+        count_column = len(in_weights[0])
+
+        widget.setRowCount(count_row)
+        widget.setColumnCount(count_column)
+
+        for j in range(count_column):
+            widget.setHorizontalHeaderItem(j, QTableWidgetItem(f"{j}"))
+
+        for i in range(count_row):
+            for j in range(count_column):
+                value = in_weights[i][j]
+                widget.setItem(i, j, QTableWidgetItem(str(round(value, 10))))
+
+        #widget.resizeColumnsToContents()
+        #widget.resizeRowsToContents()
+        
     def bPerceptron_Recognition_clicked(self):
         try:
             get_value_text = self.ui.cbListLoadedImages_Recognition.currentText()
@@ -244,7 +273,18 @@ class Window(QMainWindow):
     def bPerceptron_GetStats_clicked(self):
         try:
             Perceptron_utils.stat(self.perceptron, self.test_images, self.test_labels, self.selected_func_activate)
-            Perceptron_utils.view_weigts(self.perceptron)
+        except Exception as ex:
+            print(ex); traceback.print_exc(); 
+
+    def b_Perceptron_Learn_ShowWeights_clicked(self):
+        try:
+            if self.weights_history is None: return; 
+        
+            get_value_text = self.ui.cb_Perceptron_Learn.currentText()
+            index_value = int(get_value_text) if self.intTryParse(get_value_text)[1] else self.intTryParse(get_value_text.replace("Эпоха ", ""))[0]
+            if isinstance(index_value, int) is False: return; 
+            
+            Perceptron_utils.view_weigts(self.weights_history[index_value])
         except Exception as ex:
             print(ex); traceback.print_exc(); 
 
@@ -264,6 +304,16 @@ class Window(QMainWindow):
             #plt.axis('off')
             #plt.imshow(image)
             #plt.show()
+        except Exception as ex:
+            print(ex); traceback.print_exc(); 
+
+    def cb_Perceptron_Learn_TextChanged(self):
+        try:
+            get_value_text = self.ui.cb_Perceptron_Learn.currentText()
+            index_value = int(get_value_text) if self.intTryParse(get_value_text)[1] else self.intTryParse(get_value_text.replace("Эпоха ", ""))[0]
+            if isinstance(index_value, int) is False: return; 
+            
+            self.Send_tw_Perceptron_Learn_waights(self.ui.tw_Perceptron_Learn, self.weights_history[index_value], is_need_clear=True)
         except Exception as ex:
             print(ex); traceback.print_exc(); 
 
@@ -292,7 +342,6 @@ class Window(QMainWindow):
             return int(value), True
         except ValueError:
             return value, False
-
 
 ''' --------Запуск формы------- '''
 if __name__ == '__main__':                                            # Выполнение условия, если запущен этот файл python, а не если он подгружен через import

@@ -1,7 +1,7 @@
 1) https://github.com/sunsided/mnist - Скачать Dataset
-2) 
-3)
-4)
-5)
-6)
-7)
+2) https://neurohive.io/ru/osnovy-data-science/activation-functions/
+3) https://machinelearningmastery.ru/image-classification-in-10-minutes-with-mnist-dataset-54c35b77a38d/
+4) https://translated.turbopages.org/proxy_u/en-ru.ru.8c0e5c57-6474b3ea-71b3f376-74722d776562/https/www.geeksforgeeks.org/python-classifying-handwritten-digits-with-tensorflow/
+5) https://teletype.in/@python_academy/-Le7H6lW
+6) https://www.milindsoorya.com/blog/handwritten-digits-classification
+7) https://pythonguides.com/pytorch-mnist/

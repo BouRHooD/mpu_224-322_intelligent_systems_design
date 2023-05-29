@@ -16,13 +16,15 @@ class Perceptron:
     '''Класс перцептрона'''
     def __init__(self, input_size, output_size):
         self.generate_weight(input_size, output_size)
-        self.create_csv(self.W, "weights")
+        self.create_csv(self.Weights, "weights")
     
     def generate_weight(self, input_size, output_size):
         # Xavier 
-        stdv = 1/np.sqrt(input_size)
-        self.W = np.random.uniform(-stdv, stdv, size=(input_size, output_size))
-        self.b = np.random.uniform(-stdv, stdv, size=output_size)
+        #stdv = 1/np.sqrt(input_size)
+        #self.Weights = np.random.uniform(-stdv, stdv, size=(input_size, output_size))
+        #self.bias = np.random.uniform(-stdv, stdv, size=output_size)
+        self.Weights = np.random.uniform(-0.15, 0.15, size=(input_size, output_size))
+        self.bias = np.random.uniform(-0.15, 0.15, size=output_size)
 
     def create_csv(self, array, name):
         import os
@@ -33,29 +35,28 @@ class Perceptron:
     def ReLU(self, x):
         return np.maximum(0,x)
 
-    def dReLU(self,x):
-        return 1 * (x > 0) 
-
-    def softmax(self, z):
-        z = z - np.max(z, axis = 1).reshape(z.shape[0],1)
-        return np.exp(z) / np.sum(np.exp(z)).reshape(z.shape[0],1)
-
     def sigmoid(self, x):
         return 1/(1 + np.exp(-x))
     
     '''Формирование весов'''
-    def forward(self, input, in_func_activation):
-        # Перемножаем матрицу входного слоя на матрицу весов
-        self.output = np.dot(input, self.W)
-        self.output += self.b 
+    def out_neurons(self, input, in_func_activation):
+        '''Выходные значения нейронов (вектор выходных значений)'''
+        # Перемножаем матрицу входного слоя на матрицу весов (∑weight*x) (dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m]))
+        self.output = np.dot(input, self.Weights)
+        # Прибавляем к матрице смещения
+        self.output += self.bias 
+        # Используем функцию активации
         self.output = in_func_activation(self.output)
         return self.output   
 
     '''Обучение'''
-    def train(self, in_train_images, in_train_labels, in_func_activate=ReLU, in_count_use_img=1000, in_epochs=1, in_learning_rate=0.001, ui_progress_bar=None, window_ui=None):
+    def train(self, in_train_images, in_train_labels, in_func_activate=ReLU, in_count_use_img=1000, in_epochs=1, in_learning_rate=0.001, ui_progress_bar=None, window=None):
         '''Обучение'''
         self.count_train_imgages = len(in_train_images[:in_count_use_img])    # Пользовательское кол-во изображений для обучения
         
+        # Запоминаем веса до обучения
+        if window is not None: window.weights_history.append(self.Weights); 
+
         # Проходимся по эпохам обучения
         for epoch in range(in_epochs):
             # ProgressBar 
@@ -65,19 +66,26 @@ class Perceptron:
 
             # Train
             for i in range(self.count_train_imgages):
-                source_image = in_train_images[i]                       # Исходное изображение 28х28
-                input_layer = source_image.flatten()                    # Переводим пиксели в одну строку 28х28=784
-                y_pred = self.forward(input_layer, in_func_activate)    # 
-                error = in_train_labels[i]-y_pred
-                input_layer = np.vstack(input_layer)
-                D = in_learning_rate*input_layer*error
-                self.W = self.W+D
+                source_image = in_train_images[i]                           # Исходное изображение 28х28
+                source_label = in_train_labels[i]                           # Разметка в унитарном коде (𝐲_𝐢)
+                y_true = np.argmax(source_label)                            # Ожидаемый ответ сети
+
+                input_layer = source_image.flatten()                        # Переводим пиксели в одну строку 28х28=784 (𝐱_𝐢)
+                y_pred = self.out_neurons(input_layer, in_func_activate)    # Активируем нейрон (вектор выходных значений) (𝐲_pred_i)
+                y_result = np.argmax(y_pred)                                # Ответ перцептрона (макс. вероятность)
+
+                error = source_label-y_pred                                 # Вычисляем ошибку (вектор ошибок) (𝐞rror_i = 𝐲_𝐢 − 𝐲_pred_i)
+                input_layer = np.vstack(input_layer)                        # Добавляем размероность, чтобы перемножить матрицы
+                𝐃_𝐢 = in_learning_rate*input_layer*error                    # Вычисляем матрицу значений корректировок весов (𝐃_𝐢 = 𝛼*(𝐱_𝐢)^𝑇*𝐞rror_i)
+                self.Weights = self.Weights+𝐃_𝐢                             # Обновляем значения весов (𝐖(𝐧𝐞𝐰) = 𝐖(𝐨𝐥𝐝) + 𝐃_𝐢)
 
                 # Отправляем значение в ProgressBar
                 if ui_progress_bar is not None: ui_progress_bar.setValue(i); 
-                if window_ui is not None: window_ui.SystemMassage_TextBrowser_append(f"[{epoch+1}/{in_epochs}] "); 
+                if window is not None: window.SystemMassage_TextBrowser_append(f"[{epoch+1}/{in_epochs} эпоха] обучение на изображении {i + 1}/{self.count_train_imgages}, результат {y_result}, ожидалось {y_true}"); 
 
-            self.create_csv(self.W , f"epoch_{epoch}")
+            # Сохраняем веса после обучения по каждой эпохе
+            if window is not None: window.weights_history.append(self.Weights); 
+            self.create_csv(self.Weights , f"epoch_{epoch}")
         
         # После обучения присваиваем 0% в ProgressBar
         if ui_progress_bar is not None: ui_progress_bar.setValue(0); 
@@ -85,13 +93,13 @@ class Perceptron:
     '''Распознование'''
     def recognition(self, image, in_func_activation):
         '''Распознование'''
-        x = image.flatten()   
-        y_pred = self.forward(x, in_func_activation)
-        return np.argmax(y_pred)    
+        x = image.flatten()                               # Выстраиваем пиксели в один ряд 28х28=784
+        y_pred = self.out_neurons(x, in_func_activation)  # Вычисляем выходные значения нейронов (func_activate(X*Weights) 
+        return np.argmax(y_pred)                          # Находим максимальное значение (макс. вероятность)
     
 '''Статистика обучения'''
 def stat(perceptron_:Perceptron, in_test_images, in_test_labels, in_func_activation):
-    '''Статистика обучения'''
+    '''Статистика обучения - Строим матрицу ошибок'''
     def confusion_matrix(y_pred, y_true):
         classes = np.unique(y_true)
         classes.sort()
@@ -113,18 +121,30 @@ def stat(perceptron_:Perceptron, in_test_images, in_test_labels, in_func_activat
         y_pred.append(perceptron_.recognition(x, in_func_activation)) 
         
     confusion_matrix = confusion_matrix(y_pred,y_true)
-    print("Accuracy:",accuracy(y_pred, y_true)*100)
+    perceptron_accuracy = round(accuracy(y_pred, y_true)*100,5)
+    print(f"Accuracy perceptron: {perceptron_accuracy}%")
     df_cm = pd.DataFrame(confusion_matrix[0], range(10), range(10))
 
     sn.set(font_scale=1.4) # for label size
-    sn.heatmap(df_cm, annot=True, annot_kws={"size": 8},fmt='g',cmap="Greens") # font size
+    sn.heatmap(df_cm, annot=True, annot_kws={"size": 8},fmt='g',cmap="Blues") # font size
     plt.show()
 
 '''Отобразить веса'''
-def view_weigts(perceptron_:Perceptron):
+def view_weigts(in_weights):
+    f, ax = plt.subplots(2, 5, figsize=(12,5), gridspec_kw={'wspace':0.05, 'hspace':0.2}, squeeze=True)    
+    for index, img in enumerate(in_weights.T):
+        index_cell = index % 5
+        index_row = 0 if index < 5 else 1
+        ax[index_row, index_cell].axis("off")
+        ax[index_row, index_cell].imshow(img.reshape((28,28)), cmap='gray')
+        ax[index_row, index_cell].set_title(str(index))
+    
+    '''
     f  = plt.figure(figsize=(20,20))
-    for size, i in enumerate(perceptron_.W.T):
+    for size, i in enumerate(in_weights.T):
         f.add_subplot(5,5, size+1)
         plt.grid(False)
+        plt.axis('off')
         plt.imshow(i.reshape((28,28)), cmap='gray')
+    '''
     plt.show()
