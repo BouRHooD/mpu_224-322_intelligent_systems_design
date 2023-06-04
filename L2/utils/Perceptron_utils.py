@@ -76,7 +76,7 @@ class Perceptron:
 
                 error = source_label-y_pred                                 # Вычисляем ошибку (вектор ошибок) (𝐞rror_i = 𝐲_𝐢 − 𝐲_pred_i)
                 input_layer = np.vstack(input_layer)                        # Добавляем размероность, чтобы перемножить матрицы
-                𝐃_𝐢 = in_learning_rate*input_layer*error                    # Вычисляем матрицу значений корректировок весов (𝐃_𝐢 = 𝛼*(𝐱_𝐢)^𝑇*𝐞rror_i)
+                𝐃_𝐢 = in_learning_rate*input_layer*error                    # Вычисляем матрицу значений корректировок весов (𝐃_𝐢 = 𝛼*(𝐱_𝐢)^𝑇*𝐞rror_i) (величина корректировки веса)
                 self.Weights = self.Weights+𝐃_𝐢                             # Обновляем значения весов (𝐖(𝐧𝐞𝐰) = 𝐖(𝐨𝐥𝐝) + 𝐃_𝐢)
 
                 # Отправляем значение в ProgressBar

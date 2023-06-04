@@ -1,0 +1,43 @@
+<mxfile host="app.diagrams.net" modified="2023-06-04T05:38:58.142Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 YaBrowser/23.5.1.714 Yowser/2.5 Safari/537.36" etag="9kBhy8WFEh_o7IY89mFn" version="21.3.7" type="device">
+  <diagram name="Страница 1" id="98M3j8RtydaP7Me1tCb0">
+    <mxGraphModel dx="1290" dy="567" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="fESCrPx2pcZ3pMi_72na-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fESCrPx2pcZ3pMi_72na-1" target="fESCrPx2pcZ3pMi_72na-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-1" value="Получаем выбранное изображение и разметку к нему" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="80" width="190" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fESCrPx2pcZ3pMi_72na-2" target="fESCrPx2pcZ3pMi_72na-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-2" value="Переводим пиксели изображения в одну строку 28х28=784 значений в строке" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="265" y="160" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fESCrPx2pcZ3pMi_72na-4" target="fESCrPx2pcZ3pMi_72na-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-4" value="Перемножаем матрицу входного слоя (784 значений) на матрицу весов (28х28х10)" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="265" y="250" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fESCrPx2pcZ3pMi_72na-6" target="fESCrPx2pcZ3pMi_72na-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-6" value="Используем функцию активации" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="265" y="340" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="fESCrPx2pcZ3pMi_72na-8" target="fESCrPx2pcZ3pMi_72na-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-8" value="Макс. значение функции активации будет являться ответом сети" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="265" y="430" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="fESCrPx2pcZ3pMi_72na-11" value="Возвращаем ответ распознавания сети" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="275" y="520" width="160" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
