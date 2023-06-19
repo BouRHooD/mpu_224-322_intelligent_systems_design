@@ -12,7 +12,7 @@ import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
 
-'''Функции активации'''
+'''Функции активации''' # Softmax
 class Sigmoid:
     output = []
     def activate_neurons(self, input):
@@ -114,15 +114,16 @@ class Perceptron:
                 ## https://machinelearningmastery.ru/implement-backpropagation-algorithm-scratch-python/
                 ## https://habr.com/ru/articles/271563/
                 ## Вычисляем ошибки для всех слоев персептрона
-                error_2 = source_label-y_pred                                           # Вычисляем ошибку (вектор ошибок) (𝐞rror_i = 𝐲_𝐢 − 𝐲_pred_i)
+                ## Стохостический градиентный спуск
+                error_2 = y_pred - source_label                                         # Вычисляем ошибку (вектор ошибок) (𝐞rror_i = 𝐲_𝐢 − 𝐲_pred_i)
                 error_2_delta = self.l2_output.used_func_activation.backward(error_2)   # Дельта ошибки
                 # Дельта на выходном слои 1 
                 error_1 = np.dot(error_2_delta, self.l2_output.Weights.T)               # Передаем ошибку на нижний слой
                 error_1_delta = self.l1_hidden.used_func_activation.backward(error_1)   # Дельта ошибки
 
                 # Меняем веса по найденным ошибкам
-                self.l1_hidden.Weights += error_1_delta*self.l1_hidden.input.T*in_learning_rate
-                self.l2_output.Weights += error_2_delta*self.l2_output.input.T*in_learning_rate
+                self.l1_hidden.Weights -= error_1_delta*self.l1_hidden.input.T*in_learning_rate
+                self.l2_output.Weights -= error_2_delta*self.l2_output.input.T*in_learning_rate
 
                 # Отправляем значение в ProgressBar
                 if ui_progress_bar is not None: ui_progress_bar.setValue(i); 
