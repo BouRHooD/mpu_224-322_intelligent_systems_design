@@ -213,7 +213,7 @@ class Window(QMainWindow):
             
             # Обучение модели перцептрона
             self.weights_history = []
-            self.perceptron.train(in_train_images=self.train_images, in_train_labels=self.train_labels, in_count_use_img=get_count_image_in_train_list, in_epochs=get_epoch_count, in_learning_rate=get_learning_rate, ui_progress_bar=self.ui.pbLearning, window=self)
+            self.perceptron.train(in_train_images=self.train_images, in_train_labels=self.train_labels, in_count_use_img=get_count_image_in_train_list, in_epochs=get_epoch_count, in_learning_rate=get_learning_rate, ui_progress_bar=self.ui.pbLearning, window=self, in_test_images=self.test_images, in_test_labels=self.test_labels)
             
             # Заполняем cb эпох
             list_names_history = []

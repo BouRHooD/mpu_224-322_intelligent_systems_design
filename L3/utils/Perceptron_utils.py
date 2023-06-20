@@ -12,7 +12,7 @@ import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
 
-'''Функции активации''' # Softmax
+'''Функции активации'''
 class Sigmoid:
     output = []
     def activate_neurons(self, input):
@@ -22,6 +22,33 @@ class Sigmoid:
     def backward(self, error):
         # Производная сигмоиды * error
         return self.output * (1 - self.output) * error
+    
+class Softmax:
+    '''Softmax гарантирует, что набор вероятностей будет в диапазоне от 0 до 1'''
+    '''https://www.sharpsightlabs.com/blog/numpy-softmax/'''
+    output = []
+    def activate_neurons(self, input):
+        '''Исправление ошибки RuntimeWarning: invalid value encountered in true_divide из-за которого все значения nan'''
+        '''https://stackoverflow.com/questions/54880369/implementation-of-softmax-function-returns-nan-for-high-inputs'''
+        #e = np.exp(input)
+        #e_sum = e.sum() if e.sum() > 0 else 1
+        #self.output = (e/e_sum)
+        np_max = np.max(input)
+        exp_x = input - np_max # shift values
+        e = np.exp(exp_x)  
+        e_sum = e.sum() if e.sum() > 0 else 1
+        self.output = (e/e_sum)
+        return self.output
+
+    def backward(self, error):
+        '''https://www.youtube.com/watch?v=AbLvJVwySEo'''
+        '''https://github.com/TheIndependentCode/Neural-Network/blob/master/activations.py'''
+        # Производная Softmax * error
+        n = np.size(self.output)
+        minus_n = (np.identity(n) - self.output.T)
+        multiplication_n = minus_n * self.output
+        delta_error = np.dot(multiplication_n, error.T)
+        return delta_error.T
 
 class ReLu:
     '''ReLu - Rectified Linear Unit (Выпрямленные линейные единицы)'''
@@ -72,7 +99,7 @@ class Perceptron:
     def __init__(self):
         # Создание модели перцептрона (input_layer(784)->hidden(50)->l2_output(10))
         self.l1_hidden = LayerPerceptron(784, 50, 'l1_hidden', ReLu())
-        self.l2_output = LayerPerceptron(50, 10, 'l2_output', Sigmoid())
+        self.l2_output = LayerPerceptron(50, 10, 'l2_output', Softmax())
         
     def create_csv_weights_perceptron(self, count):
         self.l1_hidden.create_csv(count=count)
@@ -86,7 +113,7 @@ class Perceptron:
         return output
 
     '''Обучение'''
-    def train(self, in_train_images, in_train_labels, in_count_use_img=1000, in_epochs=1, in_learning_rate=0.001, ui_progress_bar=None, window=None):
+    def train(self, in_train_images, in_train_labels, in_count_use_img=1000, in_epochs=1, in_learning_rate=0.001, ui_progress_bar=None, window=None, in_test_images=None, in_test_labels=None):
         '''Обучение'''
         self.count_train_imgages = len(in_train_images[:in_count_use_img])    # Пользовательское кол-во изображений для обучения
         
@@ -94,6 +121,7 @@ class Perceptron:
         if window is not None: window.weights_history.append([self.l1_hidden.Weights, self.l2_output.Weights]); 
 
         # Проходимся по эпохам обучения
+        y_list = []
         for epoch in range(in_epochs):
             # ProgressBar 
             if ui_progress_bar is not None: ui_progress_bar.setValue(0); 
@@ -130,11 +158,21 @@ class Perceptron:
                 if window is not None: window.SystemMassage_TextBrowser_append(f"[{epoch+1}/{in_epochs} эпоха] обучение на изображении {i + 1}/{self.count_train_imgages}, результат {y_result}, ожидалось {y_true}"); 
             
             # Сохраняем веса после обучения по каждой эпохе
-            if window is not None: window.weights_history.append([self.l1_hidden.Weights, self.l2_output.Weights]); 
+            if window is not None: window.weights_history.append([self.l1_hidden.Weights.copy(), self.l2_output.Weights.copy()]); 
             self.create_csv_weights_perceptron(count=epoch)
+
+            # Собираем точность данной эпохи
+            y = stat(self, in_test_images, in_test_labels, plot_show=False)
+            if y is not None: y_list.append(y); 
         
         # После обучения присваиваем 0% в ProgressBar
         if ui_progress_bar is not None: ui_progress_bar.setValue(0); 
+    
+        # Выводим статистику
+        if y_list is not None and len(y_list) > 0:
+            plt.plot(np.arange(0, len(y_list)), y_list)
+            plt.grid(False)
+            plt.show()
 
     '''Распознование'''
     def recognition(self, image):
@@ -144,8 +182,9 @@ class Perceptron:
         return np.argmax(y_pred)                          # Находим максимальное значение (макс. вероятность)
     
 '''Статистика обучения'''
-def stat(perceptron_:Perceptron, in_test_images, in_test_labels):
+def stat(perceptron_:Perceptron, in_test_images, in_test_labels, plot_show=True):
     '''Статистика обучения - Строим матрицу ошибок'''
+    if in_test_images is None or in_test_labels is None: return; 
     def confusion_matrix(y_pred, y_true):
         classes = np.unique(y_true)
         classes.sort()
@@ -171,10 +210,12 @@ def stat(perceptron_:Perceptron, in_test_images, in_test_labels):
     print(f"Accuracy perceptron: {perceptron_accuracy}%")
     df_cm = pd.DataFrame(confusion_matrix[0], range(10), range(10))
 
-    sn.set(font_scale=1.4) # for label size
-    sn.heatmap(df_cm, annot=True, annot_kws={"size": 8},fmt='g',cmap="Blues") # font size
-    plt.show()
-    return f"Accuracy perceptron: {perceptron_accuracy}%"
+    if plot_show:
+        sn.set(font_scale=1.4) # for label size
+        sn.heatmap(df_cm, annot=True, annot_kws={"size": 8},fmt='g',cmap="Blues") # font size
+        plt.show()
+        return f"Accuracy perceptron: {perceptron_accuracy}%"
+    return perceptron_accuracy
 
 '''Отобразить веса'''
 def view_weigts(in_weights):
