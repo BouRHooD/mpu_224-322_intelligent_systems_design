@@ -1,0 +1,13 @@
+Дополнительные материалы по теме «Генетические алгоритмы»
+
+Goldberg D. E. Genetic algorithms in search, optimization, and machine learning. MA: Addison-Wesley, 1989.
+Sean Luke Essentials of Metaheuristics. Lulu, 2013.
+Рутковская Д., Пилиньский М., Рутковский Л. Нейронные сети, генетические алгоритмы и нечеткие системы: Пер. с польск. И. Д. Рудинского. М.:Горячая линия - Телеком, 2006. 452 c.
+TSPLIB – архив задач комбинаторной оптимизации
+Genetic Cars
+Genetic Algorithm Walkers
+Machine Learning Algorithm for Flappy Bird using Neural Network and Genetic Algorithm
+Distributed Evolutionary Algorithms in Python
+Mauro Dragoni, Antonia Azzini, Andrea G. B. Tettamanzi SimBa: A novel similarity-based crossover for neuro-evolution // Neurocomputing. 2014. Vol. 130. P. 108–122.
+Stanley, K.O., Clune, J., Lehman, J. et al. Designing neural networks through neuroevolution // Nature Machine Intelligence. 2019. No 1. P. 24–35.
+Thomas Uriot, Dario Izzo Safe Crossover of Neural Networks Through Neuron Alignment // In Proceedings of the 2020 Genetic and Evolutionary Computation Conference (GECCO ’20). Association for Computing Machinery, New York, NY, USA. 2020. P. 435–443.
