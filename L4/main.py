@@ -57,10 +57,10 @@ class Window(QMainWindow):
 
     def formOpening(self):
         # Настройки окна главной формы
-        file_ui_path = 'GUI.ui' if os.path.isfile('GUI.ui') is True else 'L3/GUI.ui'
-        file_icon_path = 'surflay.ico' if os.path.isfile('surflay.ico') is True else 'L3/surflay.ico'
+        file_ui_path = 'GUI.ui' if os.path.isfile('GUI.ui') is True else 'L4/GUI.ui'
+        file_icon_path = 'surflay.ico' if os.path.isfile('surflay.ico') is True else 'L4/surflay.ico'
         self.ui = uic.loadUi(file_ui_path)                            # GUI, должен быть в папке с main.py
-        self.ui.setWindowTitle('Леонов Владислав 224-322 - Лаб. 3')   # Название главного окна
+        self.ui.setWindowTitle('Леонов Владислав 224-322 - Лаб. 4')   # Название главного окна
         self.ui.setWindowIcon(QIcon(file_icon_path))                  # Иконка на гланое окно
         self.ui.show()                                                # Открываем окно формы  
 
@@ -164,18 +164,34 @@ class Window(QMainWindow):
             
             '''Получаем разметки из архива'''
             labels, labels_count = DataSet_utils.training_labels(selected_file_path)
-            self.train_labels = DataSet_utils.transformation_one_hot_encoding(labels[:])
-            self.SystemMassage_TextBrowser_append(f'Загружено разметок {labels_count} шт.')
-            self.ui.labelCountLoadedLabels.setText(f'Всего разметок: {labels_count} шт.')
             
-            '''Заполняем всплывающее окно'''
+            '''Фильтруем данные'''
+            filtered_img, filtered_label = [], []
+            for index, (img, label) in enumerate(zip(self.train_images, labels)):
+                if label == 0 or label == 1:
+                    filtered_img.append(img)
+                    filtered_label.append(label)
+            self.train_images = np.array(filtered_img[:])  
+            self.train_labels = np.array(DataSet_utils.transformation_one_hot_encoding(filtered_label[:]))
+            self.SystemMassage_TextBrowser_append(f'Изображений после фильтрации: {len(self.train_images)} шт.')
+            self.ui.labelCountLoadedImg.setText(f'Всего изображений: {len(self.train_images)} шт.')
+            self.SystemMassage_TextBrowser_append(f'Разметок после фильтрации: {len(self.train_labels)} шт.')
+            self.ui.labelCountLoadedLabels.setText(f'Всего разметок: {len(self.train_labels)} шт.')
+
+            '''Заполняем всплывающее окно картинками'''
+            list_images_name = [f"{index}" for index, img in enumerate(filtered_img)]
+            self.ui.cbListLoadedImages.clear()
+            self.ui.cbListLoadedImages.addItems(list_images_name)
+
+            '''Заполняем всплывающее окно лейблами'''
             exist_list_names_img = [self.ui.cbListLoadedImages.itemText(i) for i in range(self.ui.cbListLoadedImages.count())]
-            list_images_name = [f"img_{exist_label}-label_{labels[index]}" for index, exist_label in enumerate(exist_list_names_img)]
+            list_images_name = [f"img_{exist_label}-label_{filtered_label[index]}" for index, exist_label in enumerate(exist_list_names_img)]
             self.ui.cbListLoadedImages.clear()
             self.ui.cbListLoadedImages.addItems(list_images_name)
 
             '''Активируем активность других виджетов'''
             self.ui.bPerceptronLearn.setEnabled(True)
+            self.ui.sbImageInTrainCount.setMaximum(len(self.train_labels))
         except Exception as ex:
             if exception_off is False: print(ex); traceback.print_exc(); 
     
@@ -186,13 +202,28 @@ class Window(QMainWindow):
             
             '''Получаем разметки из архива'''
             labels, labels_count = DataSet_utils.training_labels(selected_file_path)
-            self.test_labels = DataSet_utils.transformation_one_hot_encoding(labels[:])
-            self.SystemMassage_TextBrowser_append(f'Загружено разметок тестовой выборки {labels_count} шт.')
-            self.ui.labelCountLoadedLabels_Recognition.setText(f'Всего разметок: {labels_count} шт.')
-            
-            '''Заполняем всплывающее окно'''
+
+            '''Фильтруем данные'''
+            filtered_img, filtered_label = [], []
+            for index, (img, label) in enumerate(zip(self.test_images, labels)):
+                if label == 0 or label == 1:
+                    filtered_img.append(img)
+                    filtered_label.append(label)
+            self.test_images = np.array(filtered_img[:])    
+            self.test_labels = np.array(DataSet_utils.transformation_one_hot_encoding(filtered_label[:]))
+            self.SystemMassage_TextBrowser_append(f'Изображений после фильтрации тестовой выборки: {len(self.test_images)} шт.')
+            self.ui.labelCountLoadedImg_Recognition.setText(f'Всего изображений: {len(self.test_images)} шт.')
+            self.SystemMassage_TextBrowser_append(f'Разметок после фильтрации тестовой выборки: {len(self.test_labels)} шт.')
+            self.ui.labelCountLoadedLabels_Recognition.setText(f'Всего разметок: {len(self.test_labels)} шт.')
+
+            '''Заполняем всплывающее окно картинками'''
+            list_images_name = [f"{index}" for index, img in enumerate(filtered_img)]
+            self.ui.cbListLoadedImages_Recognition.clear()
+            self.ui.cbListLoadedImages_Recognition.addItems(list_images_name)
+
+            '''Заполняем всплывающее окно лейблами'''
             exist_list_names_img = [self.ui.cbListLoadedImages_Recognition.itemText(i) for i in range(self.ui.cbListLoadedImages_Recognition.count())]
-            list_images_name = [f"img_{exist_label}-label_{labels[index]}" for index, exist_label in enumerate(exist_list_names_img)]
+            list_images_name = [f"img_{exist_label}-label_{filtered_label[index]}" for index, exist_label in enumerate(exist_list_names_img)]
             self.ui.cbListLoadedImages_Recognition.clear()
             self.ui.cbListLoadedImages_Recognition.addItems(list_images_name)
 
@@ -204,17 +235,32 @@ class Window(QMainWindow):
     def bPerceptronLearn_clicked(self):
         try:
             # Получаем данные из формы приложения
+            get_POPULATION_SIZE = self.ui.POPULATION_SIZE_IntSpinBox_2.value()
+            get_P_CROSSOVER = self.ui.P_CROSSOVER_DoubleSpinBox_2.value()
+            get_P_MUTATION = self.ui.P_MUTATION_DoubleSpinBox_2.value()
+            get_MAX_GENERATIONS = self.ui.MAX_GENERATIONS_IntSpinBox_2.value()
             get_epoch_count = self.ui.sbEpochCount.value()
-            get_learning_rate = self.ui.sbLearningRate.value()
             get_count_image_in_train_list = self.ui.sbImageInTrainCount.value()
 
-            # Создание модели перцептрона (input_layer(784)->hiden_1(50)->hiden_2(50)->output_layer(10))
-            self.perceptron = Perceptron_utils.Perceptron()
-            
-            # Обучение модели перцептрона
+            # Выводим информацию об обучении
+            print("Кол-во индивид.:", get_POPULATION_SIZE)
+            print("Кол-во поколений:", get_MAX_GENERATIONS)
+            print("Вероятность мутации:", get_P_MUTATION)
+            print("Вероятность кроссовера:", get_P_CROSSOVER)
+            print("Кол-во обучающих данных:", get_count_image_in_train_list)
+            print("Кол-во эпох:", get_epoch_count)
+
+            # Создание модели перцептрона 
+            params_gen_alg = [get_POPULATION_SIZE,  get_P_MUTATION, get_POPULATION_SIZE, get_P_CROSSOVER]
+            self.perceptron = Perceptron_utils.Perceptron(28*28, 2, params_gen_alg, get_epoch_count)
+            # Обучение модели перцептрона с помощью Генетического Алгоритма (ГА)
             self.weights_history = []
-            self.perceptron.train(in_train_images=self.train_images, in_train_labels=self.train_labels, in_count_use_img=get_count_image_in_train_list, in_epochs=get_epoch_count, in_learning_rate=get_learning_rate, ui_progress_bar=self.ui.pbLearning, window=self)
+            self.perceptron.train(self.train_images, self.train_labels, get_count_image_in_train_list, window=self)
+            # Отображаем статистику после обучения на тестовой выборке
+            Perceptron_utils.stat(self.perceptron, self.train_images, self.train_labels)
+            Perceptron_utils.view_weigts(self.perceptron)
             
+            '''
             # Заполняем cb эпох
             list_names_history = []
             for i, x in enumerate(self.weights_history):
@@ -229,7 +275,7 @@ class Window(QMainWindow):
                     list_names_history.append(f"Слой сети {i}")    
                 self.ui.cb_Perceptron_Learn_2.clear()
                 self.ui.cb_Perceptron_Learn_2.addItems(list_names_history)
-
+            '''
             '''Активируем активность других виджетов'''
             self.ui.bPerceptron_Recognition.setEnabled(True)
             self.ui.bPerceptron_GetStats.setEnabled(True)

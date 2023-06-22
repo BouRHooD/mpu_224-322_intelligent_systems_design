@@ -1,9 +1,9 @@
-# Распознавание изображений на базе НС обратного распространения Leonov Vladislav 181-311
+# Обучение нейронной сети с помощью генетических алгоритмов
 # ФИО автора: Леонов Владислав Денисович
 # E-mail автора: bourhood@gmail.com
 # Группа: 224-322
 # Университет: Московский Политехнический Университет
-# Год разработки: 11.05.2023
+# Год разработки: 10.06.2023
 # Учебный курс: https://online.mospolytech.ru/course/view.php?id=10055
 ########################################################################################################################
 
@@ -61,6 +61,6 @@ def transformation_one_hot_encoding(in_array):
     import numpy as np
     in_array = np.array(in_array) 
     n = in_array.shape[0]
-    categorical = np.zeros((n, 10))
+    categorical = np.zeros((n, 2))  # 2 категории
     categorical[np.arange(n), in_array] = 1
     return categorical
